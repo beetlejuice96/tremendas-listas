@@ -76,8 +76,47 @@ export default function MapaView({ feriantes, onToggle }: Props) {
   }
 
   return (
-    <div className="relative">
-      <div ref={contRef} className="overflow-auto" style={{ height: 'calc(100dvh - 150px)' }}>
+    <div className="relative flex flex-col" style={{ height: 'calc(100dvh - 150px)' }}>
+      <div className="relative z-10 shrink-0 px-3 py-2">
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar en el mapa…"
+          className="w-full rounded-xl bg-white px-4 py-2.5 text-base text-zinc-900 placeholder-zinc-400 shadow-sm ring-1 ring-black/10 outline-none focus:ring-zinc-900"
+        />
+        {resultados.length > 0 && (
+          <div className="absolute inset-x-3 top-full -mt-1 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/10">
+            {resultados.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => irAMesa(f)}
+                className="flex w-full items-center gap-2 border-b border-zinc-100 px-3 py-2.5 text-left last:border-b-0 active:bg-zinc-50"
+              >
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/10 text-sm font-bold text-zinc-900"
+                  style={{
+                    backgroundColor: f.sector_color ? `#${f.sector_color}` : '#e4e4e7',
+                  }}
+                >
+                  {f.numero ?? '—'}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-zinc-900">
+                    {f.proyecto}
+                  </span>
+                  {f.responsable && (
+                    <span className="block truncate text-xs text-zinc-500">{f.responsable}</span>
+                  )}
+                </span>
+                {f.llegado_at && <span className="text-sm text-green-600">✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div ref={contRef} className="flex-1 overflow-auto">
         <div
           className="relative"
           style={{ width: MAPA_W * zoom, height: MAPA_H * zoom }}
