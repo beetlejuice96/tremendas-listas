@@ -14,6 +14,16 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
   const [feriantes, setFeriantes] = useState<Feriante[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
+  const [sectoresActivos, setSectoresActivos] = useState<Set<string>>(new Set())
+
+  function toggleSector(sector: string) {
+    setSectoresActivos((prev) => {
+      const next = new Set(prev)
+      if (next.has(sector)) next.delete(sector)
+      else next.add(sector)
+      return next
+    })
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -75,19 +85,29 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
     }
   }
 
+  const sectores = useMemo(() => {
+    if (!feriantes) return []
+    const vistos = new Map<string, string | null>()
+    for (const f of feriantes) {
+      if (f.sector && !vistos.has(f.sector)) vistos.set(f.sector, f.sector_color)
+    }
+    return [...vistos.entries()].map(([nombre, color]) => ({ nombre, color }))
+  }, [feriantes])
+
   const filtrados = useMemo(() => {
     if (!feriantes) return []
     const q = normalizeText(busqueda)
     return feriantes.filter((f) => {
       if (filtro === 'pendientes' && f.llegado_at) return false
       if (filtro === 'llegaron' && !f.llegado_at) return false
+      if (sectoresActivos.size > 0 && (!f.sector || !sectoresActivos.has(f.sector))) return false
       if (!q) return true
       const texto = normalizeText(
         `${f.proyecto} ${f.responsable ?? ''} ${f.handle ?? ''} ${f.numero ?? ''}`,
       )
       return texto.includes(q)
     })
-  }, [feriantes, busqueda, filtro])
+  }, [feriantes, busqueda, filtro, sectoresActivos])
 
   const total = feriantes?.length ?? 0
   const llegaron = feriantes?.filter((f) => f.llegado_at).length ?? 0
@@ -132,6 +152,29 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
             </button>
           ))}
         </div>
+
+        {sectores.length > 0 && (
+          <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+            {sectores.map((s) => {
+              const activo = sectoresActivos.has(s.nombre)
+              return (
+                <button
+                  key={s.nombre}
+                  onClick={() => toggleSector(s.nombre)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium text-zinc-900 transition-all ${
+                    activo
+                      ? 'border-white ring-2 ring-white'
+                      : 'border-black/10 opacity-60'
+                  }`}
+                  style={{ backgroundColor: s.color ? `#${s.color}` : '#e4e4e7' }}
+                >
+                  {s.nombre}
+                  {activo ? ' ✓' : ''}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-md space-y-2 p-3">
