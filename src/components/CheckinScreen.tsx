@@ -1,0 +1,184 @@
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { normalizeText, formatHora } from '../lib/text'
+import type { Edicion, Feriante } from '../types'
+
+interface Props {
+  edicion: Edicion
+  onBack: () => void
+}
+
+type Filtro = 'todos' | 'pendientes' | 'llegaron'
+
+export default function CheckinScreen({ edicion, onBack }: Props) {
+  const [feriantes, setFeriantes] = useState<Feriante[] | null>(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtro, setFiltro] = useState<Filtro>('todos')
+
+  useEffect(() => {
+    let cancelado = false
+
+    async function cargar() {
+      const { data, error } = await supabase
+        .from('feriantes')
+        .select('*')
+        .eq('edicion_id', edicion.id)
+        .order('numero', { ascending: true })
+      if (cancelado) return
+      if (error) {
+        alert('Error cargando feriantes: ' + error.message)
+        setFeriantes([])
+        return
+      }
+      setFeriantes(data)
+    }
+
+    cargar()
+
+    const canal = supabase
+      .channel(`feriantes-${edicion.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'feriantes',
+          filter: `edicion_id=eq.${edicion.id}`,
+        },
+        (payload) => {
+          const actualizado = payload.new as Feriante
+          setFeriantes((prev) =>
+            prev ? prev.map((f) => (f.id === actualizado.id ? actualizado : f)) : prev,
+          )
+        },
+      )
+      .subscribe()
+
+    return () => {
+      cancelado = true
+      supabase.removeChannel(canal)
+    }
+  }, [edicion.id])
+
+  async function toggleLlegada(f: Feriante) {
+    if (f.llegado_at && !confirm(`¿Desmarcar la llegada de ${f.proyecto}?`)) return
+    const llegado_at = f.llegado_at ? null : new Date().toISOString()
+    setFeriantes((prev) =>
+      prev ? prev.map((x) => (x.id === f.id ? { ...x, llegado_at } : x)) : prev,
+    )
+    const { error } = await supabase.from('feriantes').update({ llegado_at }).eq('id', f.id)
+    if (error) {
+      setFeriantes((prev) =>
+        prev ? prev.map((x) => (x.id === f.id ? { ...x, llegado_at: f.llegado_at } : x)) : prev,
+      )
+      alert('No se pudo guardar: ' + error.message)
+    }
+  }
+
+  const filtrados = useMemo(() => {
+    if (!feriantes) return []
+    const q = normalizeText(busqueda)
+    return feriantes.filter((f) => {
+      if (filtro === 'pendientes' && f.llegado_at) return false
+      if (filtro === 'llegaron' && !f.llegado_at) return false
+      if (!q) return true
+      const texto = normalizeText(
+        `${f.proyecto} ${f.responsable ?? ''} ${f.handle ?? ''} ${f.numero ?? ''}`,
+      )
+      return texto.includes(q)
+    })
+  }, [feriantes, busqueda, filtro])
+
+  const total = feriantes?.length ?? 0
+  const llegaron = feriantes?.filter((f) => f.llegado_at).length ?? 0
+
+  return (
+    <div className="min-h-dvh bg-zinc-100 pb-8">
+      <header className="sticky top-0 z-10 bg-zinc-900 px-4 pb-3 pt-4 text-white shadow-md">
+        <div className="mb-3 flex items-center justify-between">
+          <button onClick={onBack} className="-ml-1 rounded-lg px-1 py-1 text-sm text-zinc-400">
+            ‹ Ediciones
+          </button>
+          <h1 className="font-semibold">{edicion.nombre}</h1>
+          <span className="rounded-full bg-zinc-700 px-2.5 py-0.5 text-sm font-medium tabular-nums">
+            {llegaron}/{total}
+          </span>
+        </div>
+
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar proyecto, nombre, @handle o mesa…"
+          className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-base text-white placeholder-zinc-500 outline-none focus:bg-zinc-700"
+        />
+
+        <div className="mt-3 flex gap-2">
+          {(
+            [
+              ['todos', 'Todos'],
+              ['pendientes', 'Pendientes'],
+              ['llegaron', 'Llegaron'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFiltro(key)}
+              className={`flex-1 rounded-full py-1.5 text-sm font-medium transition-colors ${
+                filtro === key ? 'bg-white text-zinc-900' : 'bg-zinc-800 text-zinc-400'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-md space-y-2 p-3">
+        {feriantes === null && <p className="py-8 text-center text-zinc-500">Cargando…</p>}
+
+        {feriantes !== null && filtrados.length === 0 && (
+          <p className="py-8 text-center text-zinc-500">
+            {busqueda ? 'Sin resultados para esa búsqueda' : 'No hay feriantes en este filtro'}
+          </p>
+        )}
+
+        {filtrados.map((f) => (
+          <div
+            key={f.id}
+            className={`flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ${
+              f.llegado_at ? 'opacity-80 ring-2 ring-green-500/60' : ''
+            }`}
+          >
+            <div
+              className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-black/10 text-zinc-900"
+              style={{ backgroundColor: f.sector_color ? `#${f.sector_color}` : '#e4e4e7' }}
+            >
+              <span className="text-lg font-bold leading-none">{f.numero ?? '—'}</span>
+              <span className="mt-0.5 text-[10px] leading-none">{f.sector ?? ''}</span>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold leading-tight text-zinc-900">{f.proyecto}</div>
+              {f.responsable && (
+                <div className="truncate text-sm text-zinc-600">{f.responsable}</div>
+              )}
+              {f.handle && <div className="truncate text-xs text-zinc-400">@{f.handle}</div>}
+            </div>
+
+            <button
+              onClick={() => toggleLlegada(f)}
+              className={`shrink-0 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${
+                f.llegado_at
+                  ? 'bg-green-100 text-green-700 active:bg-green-200'
+                  : 'bg-zinc-900 text-white active:bg-zinc-700'
+              }`}
+            >
+              {f.llegado_at ? `✓ ${formatHora(f.llegado_at)}` : 'Llegó'}
+            </button>
+          </div>
+        ))}
+      </main>
+    </div>
+  )
+}
