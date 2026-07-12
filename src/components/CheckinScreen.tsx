@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizeText, formatHora } from '../lib/text'
+import MapaView from './MapaView'
 import type { Edicion, Feriante } from '../types'
 
 interface Props {
@@ -15,6 +16,7 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [sectoresActivos, setSectoresActivos] = useState<Set<string>>(new Set())
+  const [vista, setVista] = useState<'lista' | 'mapa'>('lista')
 
   function toggleSector(sector: string) {
     setSectoresActivos((prev) => {
@@ -125,6 +127,27 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
           </span>
         </div>
 
+        <div className="mb-3 flex rounded-full bg-zinc-800 p-1">
+          {(
+            [
+              ['lista', 'Lista'],
+              ['mapa', 'Mapa'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setVista(key)}
+              className={`flex-1 rounded-full py-1.5 text-sm font-medium transition-colors ${
+                vista === key ? 'bg-white text-zinc-900' : 'text-zinc-400'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {vista === 'lista' && (
+          <>
         <input
           type="search"
           value={busqueda}
@@ -175,8 +198,15 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
             })}
           </div>
         )}
+          </>
+        )}
       </header>
 
+      {vista === 'mapa' && feriantes !== null && (
+        <MapaView feriantes={feriantes} onToggle={toggleLlegada} />
+      )}
+
+      {vista === 'lista' && (
       <main className="mx-auto max-w-md space-y-2 p-3">
         {feriantes === null && <p className="py-8 text-center text-zinc-500">Cargando…</p>}
 
@@ -222,6 +252,7 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
           </div>
         ))}
       </main>
+      )}
     </div>
   )
 }
