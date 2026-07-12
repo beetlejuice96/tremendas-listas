@@ -1,11 +1,13 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import mesas from '../lib/mesas.json'
-import { formatHora } from '../lib/text'
+import { formatHora, normalizeText } from '../lib/text'
 import type { Feriante } from '../types'
 
 const MAPA_W = 2517
 const MAPA_H = 2296
 const FACTORES = [1, 2.5, 5, 8]
+
+const mesaPorNumero = new Map(mesas.map((m) => [m.n, m]))
 
 interface Props {
   feriantes: Feriante[]
@@ -16,15 +18,62 @@ export default function MapaView({ feriantes, onToggle }: Props) {
   const [zoomIdx, setZoomIdx] = useState(0)
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [fitZoom, setFitZoom] = useState(0.15)
+  const [busqueda, setBusqueda] = useState('')
   const contRef = useRef<HTMLDivElement>(null)
+  const scrollPendiente = useRef<{ x: number; y: number } | null>(null)
 
   useLayoutEffect(() => {
     if (contRef.current) setFitZoom(contRef.current.clientWidth / MAPA_W)
   }, [])
 
   const zoom = fitZoom * FACTORES[zoomIdx]
+
+  // centra la mesa buscada una vez que el DOM ya tiene el tamaño del nuevo zoom
+  useLayoutEffect(() => {
+    const destino = scrollPendiente.current
+    const cont = contRef.current
+    if (!destino || !cont) return
+    scrollPendiente.current = null
+    cont.scrollTo({
+      left: destino.x * zoom - cont.clientWidth / 2,
+      top: destino.y * zoom - cont.clientHeight / 2,
+      behavior: 'smooth',
+    })
+  }, [zoom])
   const porNumero = new Map(feriantes.map((f) => [f.numero, f]))
   const sel = seleccionado ? feriantes.find((f) => f.id === seleccionado) : null
+
+  const resultados = useMemo(() => {
+    const q = normalizeText(busqueda)
+    if (!q) return []
+    return feriantes
+      .filter((f) =>
+        normalizeText(
+          `${f.proyecto} ${f.responsable ?? ''} ${f.handle ?? ''} ${f.numero ?? ''}`,
+        ).includes(q),
+      )
+      .slice(0, 6)
+  }, [feriantes, busqueda])
+
+  function irAMesa(f: Feriante) {
+    setBusqueda('')
+    setSeleccionado(f.id)
+    const mesa = f.numero != null ? mesaPorNumero.get(f.numero) : null
+    if (!mesa || !contRef.current) return
+    const centro = { x: mesa.x + mesa.w / 2, y: mesa.y + mesa.h / 2 }
+    const idx = Math.max(zoomIdx, 1) // zoom mínimo para que la mesa se vea bien
+    if (idx !== zoomIdx) {
+      scrollPendiente.current = centro
+      setZoomIdx(idx)
+    } else {
+      const cont = contRef.current
+      cont.scrollTo({
+        left: centro.x * zoom - cont.clientWidth / 2,
+        top: centro.y * zoom - cont.clientHeight / 2,
+        behavior: 'smooth',
+      })
+    }
+  }
 
   return (
     <div className="relative">
@@ -50,7 +99,7 @@ export default function MapaView({ feriantes, onToggle }: Props) {
                 key={m.n}
                 onClick={() => setSeleccionado(activo ? null : f.id)}
                 className={`absolute flex items-center justify-center rounded font-bold text-zinc-900 ${
-                  activo ? 'z-10 ring-4 ring-zinc-900' : ''
+                  activo ? 'z-10 animate-pulse ring-4 ring-zinc-900' : ''
                 }`}
                 style={{
                   left: m.x * zoom,
@@ -73,7 +122,49 @@ export default function MapaView({ feriantes, onToggle }: Props) {
         </div>
       </div>
 
-      <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl bg-zinc-900 text-white shadow-lg">
+      <div className="absolute inset-x-3 top-2 z-10">
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar en el mapa…"
+          className="w-full rounded-xl bg-zinc-900/90 px-4 py-2.5 text-base text-white placeholder-zinc-400 shadow-lg outline-none backdrop-blur"
+        />
+        {resultados.length > 0 && (
+          <div className="mt-1 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/10">
+            {resultados.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => irAMesa(f)}
+                className="flex w-full items-center gap-2 border-b border-zinc-100 px-3 py-2.5 text-left last:border-b-0 active:bg-zinc-50"
+              >
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/10 text-sm font-bold text-zinc-900"
+                  style={{
+                    backgroundColor: f.sector_color ? `#${f.sector_color}` : '#e4e4e7',
+                  }}
+                >
+                  {f.numero ?? '—'}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-zinc-900">
+                    {f.proyecto}
+                  </span>
+                  {f.responsable && (
+                    <span className="block truncate text-xs text-zinc-500">{f.responsable}</span>
+                  )}
+                </span>
+                {f.llegado_at && <span className="text-sm text-green-600">✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        className="absolute right-3 flex flex-col overflow-hidden rounded-xl bg-zinc-900 text-white shadow-lg"
+        style={{ bottom: sel ? 118 : 16 }}
+      >
         <button
           onClick={() => setZoomIdx((i) => Math.min(i + 1, FACTORES.length - 1))}
           className="px-4 py-3 text-lg font-bold active:bg-zinc-700"
