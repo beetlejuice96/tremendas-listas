@@ -7,3 +7,8 @@ dist
 tsconfig.*.tsbuildinfo
 .vercel
 .env*
+
+# Datos personales de feriantes (mails, teléfonos). Repo público: NO subir.
+DATA/
+*.csv
+*.xlsx
