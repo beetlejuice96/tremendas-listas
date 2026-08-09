@@ -1,20 +1,41 @@
 import { useEffect, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import type { Edicion } from './types'
 import EdicionesScreen from './components/EdicionesScreen'
 import CheckinScreen from './components/CheckinScreen'
+import PantallaPin from './components/PantallaPin'
 
 const STORAGE_KEY = 'tremendas-edicion-activa'
 
+// El PIN se exige sólo si hay un usuario de equipo configurado. Así la app sigue
+// andando mientras la cuenta compartida no esté creada en Supabase.
+const PIN_ACTIVO = Boolean(import.meta.env.VITE_EMAIL_EQUIPO)
+
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [sesionLista, setSesionLista] = useState(!PIN_ACTIVO)
   const [ediciones, setEdiciones] = useState<Edicion[] | null>(null)
   const [edicionActiva, setEdicionActiva] = useState<Edicion | null>(null)
 
   useEffect(() => {
+    if (!PIN_ACTIVO) return
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setSesionLista(true)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, s) => setSession(s))
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  const autenticado = !PIN_ACTIVO || session !== null
+
+  useEffect(() => {
+    if (!autenticado) return
     supabase
       .from('ediciones')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('fecha', { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) {
           alert('Error cargando ediciones: ' + error.message)
@@ -22,11 +43,10 @@ export default function App() {
           return
         }
         setEdiciones(data)
-        const savedId = localStorage.getItem(STORAGE_KEY)
-        const saved = data.find((e) => e.id === savedId)
-        if (saved) setEdicionActiva(saved)
+        const guardada = data.find((e) => e.id === localStorage.getItem(STORAGE_KEY))
+        if (guardada) setEdicionActiva(guardada)
       })
-  }, [])
+  }, [autenticado])
 
   function seleccionarEdicion(edicion: Edicion) {
     localStorage.setItem(STORAGE_KEY, edicion.id)
@@ -41,17 +61,20 @@ export default function App() {
     setEdicionActiva(null)
   }
 
-  if (ediciones === null) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-zinc-100 text-zinc-500">
-        Cargando…
-      </div>
-    )
-  }
+  if (!sesionLista) return <Cargando />
+  if (!autenticado) return <PantallaPin />
+  if (ediciones === null) return <Cargando />
 
   if (!edicionActiva) {
     return <EdicionesScreen ediciones={ediciones} onSelect={seleccionarEdicion} />
   }
-
   return <CheckinScreen edicion={edicionActiva} onBack={salirDeEdicion} />
+}
+
+function Cargando() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-zinc-100 text-zinc-500">
+      Cargando…
+    </div>
+  )
 }

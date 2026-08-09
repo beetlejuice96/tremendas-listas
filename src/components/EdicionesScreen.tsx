@@ -33,12 +33,40 @@ export default function EdicionesScreen({ ediciones, onSelect }: Props) {
         .select()
         .single()
       if (error) throw error
-      const { error: errorFeriantes } = await supabase
-        .from('feriantes')
-        .insert(feriantes.map((f) => ({ ...f, edicion_id: edicion.id })))
-      if (errorFeriantes) {
+      try {
+        // Cada feriante del excel es un emprendimiento (que puede venir de ediciones
+        // anteriores, identificado por su handle) más su participación en ésta.
+        const conHandle = feriantes.filter((f) => f.handle?.trim())
+        if (conHandle.length !== feriantes.length) {
+          throw new Error('Hay filas sin Instagram: es lo que identifica al emprendimiento')
+        }
+        const { data: emprendimientos, error: errorEmpr } = await supabase
+          .from('emprendimientos')
+          .upsert(
+            conHandle.map((f) => ({
+              handle: f.handle!.trim().toLowerCase(),
+              nombre_proyecto: f.proyecto,
+              responsable: f.responsable,
+            })),
+            { onConflict: 'handle' },
+          )
+          .select('id, handle')
+        if (errorEmpr) throw errorEmpr
+
+        const idPorHandle = new Map(emprendimientos.map((e) => [e.handle, e.id]))
+        const { error: errorPart } = await supabase.from('participaciones').insert(
+          conHandle.map((f) => ({
+            edicion_id: edicion.id,
+            emprendimiento_id: idPorHandle.get(f.handle!.trim().toLowerCase()),
+            numero_mesa: f.numero,
+            sector: f.sector,
+            sector_color: f.sector_color,
+          })),
+        )
+        if (errorPart) throw errorPart
+      } catch (e) {
         await supabase.from('ediciones').delete().eq('id', edicion.id)
-        throw errorFeriantes
+        throw e
       }
       onSelect(edicion)
     } catch (e) {
@@ -119,7 +147,12 @@ export default function EdicionesScreen({ ediciones, onSelect }: Props) {
                 <div>
                   <div className="font-semibold text-zinc-900">{e.nombre}</div>
                   <div className="text-xs text-zinc-500">
-                    {new Date(e.created_at).toLocaleDateString('es-AR')}
+                    {e.fecha
+                      // La fecha viene como 'YYYY-MM-DD': partirla evita que se
+                      // corra un día por zona horaria al pasarla por Date().
+                      ? e.fecha.split('-').reverse().join('/')
+                      : new Date(e.created_at).toLocaleDateString('es-AR')}
+                    {e.cancelada && ' · cancelada'}
                   </div>
                 </div>
                 <span className="text-zinc-400">›</span>

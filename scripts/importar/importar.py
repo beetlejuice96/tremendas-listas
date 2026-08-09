@@ -120,7 +120,10 @@ def main() -> int:
                 "web": None, "ciudad": None,
             })
             e["nombre_proyecto"] = mejor(e["nombre_proyecto"], fila.nombre_proyecto) or fila.handle
-            e["responsable"] = mejor(e["responsable"], fila.responsable)
+            # Si el "responsable" repite el nombre del proyecto, la columna estaba
+            # corrida en esa edición: mejor no pisar el dato bueno de otra.
+            if fila.responsable.strip().lower() != fila.nombre_proyecto.strip().lower():
+                e["responsable"] = mejor(e["responsable"], fila.responsable)
             e["email"] = mejor(e["email"], fila.email)
             e["celular"] = mejor(e["celular"], fila.celular)
             e["web"] = mejor(e["web"], fila.web)

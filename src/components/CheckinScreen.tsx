@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizeText, formatHora } from '../lib/text'
 import MapaView from './MapaView'
-import type { Edicion, Feriante } from '../types'
+import { aFeriante } from '../types'
+import type { Edicion, Feriante, ParticipacionConEmprendimiento } from '../types'
+
+const CAMPOS_PARTICIPACION =
+  'id, edicion_id, numero_mesa, sector, sector_color, llegado_at, created_at,' +
+  ' emprendimientos ( handle, nombre_proyecto, responsable )'
 
 interface Props {
   edicion: Edicion
@@ -32,35 +37,38 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
 
     async function cargar() {
       const { data, error } = await supabase
-        .from('feriantes')
-        .select('*')
+        .from('participaciones')
+        .select(CAMPOS_PARTICIPACION)
         .eq('edicion_id', edicion.id)
-        .order('numero', { ascending: true })
+        .eq('estado', 'confirmada')
+        .order('numero_mesa', { ascending: true, nullsFirst: false })
       if (cancelado) return
       if (error) {
         alert('Error cargando feriantes: ' + error.message)
         setFeriantes([])
         return
       }
-      setFeriantes(data)
+      setFeriantes((data as unknown as ParticipacionConEmprendimiento[]).map(aFeriante))
     }
 
     cargar()
 
     const canal = supabase
-      .channel(`feriantes-${edicion.id}`)
+      .channel(`participaciones-${edicion.id}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'feriantes',
+          table: 'participaciones',
           filter: `edicion_id=eq.${edicion.id}`,
         },
+        // El payload de realtime no trae el emprendimiento embebido, así que sólo
+        // se sincroniza la llegada: es lo único que cambia durante la feria.
         (payload) => {
-          const actualizado = payload.new as Feriante
+          const { id, llegado_at } = payload.new as { id: string; llegado_at: string | null }
           setFeriantes((prev) =>
-            prev ? prev.map((f) => (f.id === actualizado.id ? actualizado : f)) : prev,
+            prev ? prev.map((f) => (f.id === id ? { ...f, llegado_at } : f)) : prev,
           )
         },
       )
@@ -78,7 +86,7 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
     setFeriantes((prev) =>
       prev ? prev.map((x) => (x.id === f.id ? { ...x, llegado_at } : x)) : prev,
     )
-    const { error } = await supabase.from('feriantes').update({ llegado_at }).eq('id', f.id)
+    const { error } = await supabase.from('participaciones').update({ llegado_at }).eq('id', f.id)
     if (error) {
       setFeriantes((prev) =>
         prev ? prev.map((x) => (x.id === f.id ? { ...x, llegado_at: f.llegado_at } : x)) : prev,
