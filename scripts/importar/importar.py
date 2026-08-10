@@ -255,9 +255,13 @@ def main() -> int:
                     ignore_duplicates=True,
                 ).execute()
 
-        if seleccionados:
+        # Las 'descartadas' se miraron y quedaron afuera: nunca fueron seleccionadas,
+        # así que no son participaciones. Su postulación ya quedó registrada arriba.
+        participantes = [f for f in seleccionados if f.exclusion != "descarte"]
+
+        if participantes:
             registros = []
-            for f in seleccionados:
+            for f in participantes:
                 empr_id = ids_empr[f.handle]
                 tipo = nombre_tipo_puesto(f.puesto)
                 registros.append({
@@ -266,11 +270,20 @@ def main() -> int:
                     "postulacion_id": ids_post.get(empr_id),
                     "tipo_puesto_id": ids_tipo.get(tipo[0]) if tipo else None,
                     "precio_final": tipo[1] if tipo else None,
-                    "estado": "se_bajo" if f.excluida else "confirmada",
+                    "estado": "se_bajo" if f.exclusion == "baja" else "confirmada",
                 })
             sb.table("participaciones").upsert(
                 registros, on_conflict="edicion_id,emprendimiento_id"
             ).execute()
+
+            # Reimportar debe poder corregir de más: se borran las participaciones
+            # de esta edición que ya no figuran en la planilla, salvo que tengan
+            # una llegada registrada (ese dato sólo existe en la app).
+            validos = {ids_empr[f.handle] for f in participantes}
+            for p in sb.table("participaciones").select("id, emprendimiento_id, llegado_at") \
+                    .eq("edicion_id", edicion_id).execute().data:
+                if p["emprendimiento_id"] not in validos and p["llegado_at"] is None:
+                    sb.table("participaciones").delete().eq("id", p["id"]).execute()
 
             # Pagos: cada monto de la fila es un pago suelto de monto libre.
             ids_part = {

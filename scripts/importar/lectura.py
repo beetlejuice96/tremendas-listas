@@ -15,9 +15,18 @@ from pathlib import Path
 
 import openpyxl
 
-# Marca el punto a partir del cual las filas ya no cuentan como participación:
-# "NO VIENEN:" en octubre 2025, "se bajaron" en noviembre 2025.
-CORTE = re.compile(r"^\s*(no vienen|se bajaron|no vinieron)\b", re.I)
+# Al final de cada planilla puede haber un bloque aparte, y no todos significan lo
+# mismo. Los rótulos aparecen solos en su fila, así que se detectan por eso y no
+# por buscar la frase en cualquier celda ("viene de antes" es una nota común).
+#
+#   descarte -> las miraron y las dejaron afuera; nunca fueron seleccionadas.
+#               (julio 2026: "SACADAS pero presentes aca por las dudas")
+#   baja     -> sí quedaron seleccionadas y después se cayeron.
+#               (octubre "NO VIENEN", noviembre "se bajaron", marzo "de antes")
+CORTE_DESCARTE = re.compile(r"^\s*(sacad[ao]s|descartad[ao]s)\b", re.I)
+CORTE_BAJA = re.compile(
+    r"^\s*(no vienen|no vinieron|se bajaron|se bajo|de antes|las seleccionamos)", re.I
+)
 URL_INSTAGRAM = re.compile(r"instagram\.com/+([^/?\s]+)", re.I)
 SOLO_DIGITOS = re.compile(r"^[\d\s+()-]{7,}$")
 MONTO = re.compile(r"^\$?\s*([\d.]+(?:,\d+)?)\s*$")
@@ -234,8 +243,13 @@ class Fila:
     indumentaria: str = ""
     productos: str = ""
     montos: list[float] = field(default_factory=list)
-    excluida: bool = False       # está debajo de "NO VIENEN" / "se bajaron"
+    # None = participó. 'baja' = quedó pero se cayó. 'descarte' = nunca quedó.
+    exclusion: str | None = None
     sin_instagram: bool = False  # identificada por mail: necesita revisión humana
+
+    @property
+    def excluida(self) -> bool:
+        return self.exclusion is not None
 
 
 def parsear(path: Path) -> tuple[list[Fila], Columnas]:
@@ -252,10 +266,16 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
         return fila[j].strip() if j is not None and j < len(fila) else ""
 
     resultado: list[Fila] = []
-    excluidas = False
+    exclusion: str | None = None
     for fila in datos:
-        if any(CORTE.match(c) for c in fila if c):
-            excluidas = True
+        # Un rótulo de sección viene solo en su fila y sin mail; así no se confunde
+        # con una nota escrita al lado de los datos de un feriante.
+        llenas = [c for c in fila if c.strip()]
+        if 1 <= len(llenas) <= 3 and not any("@" in c for c in llenas):
+            if CORTE_DESCARTE.match(llenas[0]):
+                exclusion = "descarte"
+            elif CORTE_BAJA.match(llenas[0]):
+                exclusion = "baja"
         handle = normalizar_handle(valor(fila, cols.handle))
         email = valor(fila, cols.email)
         # Sin Instagram, el mail alcanza como identidad: si no, se pierden
@@ -281,6 +301,6 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
             indumentaria=valor(fila, cols.indumentaria),
             productos=valor(fila, cols.productos),
             montos=montos,
-            excluida=excluidas,
+            exclusion=exclusion,
         ))
     return resultado, cols
