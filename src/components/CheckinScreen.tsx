@@ -6,8 +6,9 @@ import { aFeriante } from '../types'
 import type { Edicion, Feriante, ParticipacionConEmprendimiento } from '../types'
 
 const CAMPOS_PARTICIPACION =
-  'id, edicion_id, numero_mesa, sector, sector_color, llegado_at, created_at,' +
-  ' emprendimientos ( handle, nombre_proyecto, responsable )'
+  'id, edicion_id, numero_mesa, llegado_at, created_at,' +
+  ' emprendimientos ( handle, nombre_proyecto, responsable ),' +
+  ' sectores ( nombre, color )'
 
 interface Props {
   edicion: Edicion

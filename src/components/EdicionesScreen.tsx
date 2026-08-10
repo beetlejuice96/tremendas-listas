@@ -54,13 +54,38 @@ export default function EdicionesScreen({ ediciones, onSelect }: Props) {
         if (errorEmpr) throw errorEmpr
 
         const idPorHandle = new Map(emprendimientos.map((e) => [e.handle, e.id]))
+
+        // Los sectores son filas propias: el color pertenece al sector, no a cada
+        // feriante, así que se crean una vez por edición.
+        const coloresPorSector = new Map<string, string | null>()
+        for (const f of conHandle) {
+          if (f.sector && !coloresPorSector.has(f.sector)) {
+            coloresPorSector.set(f.sector, f.sector_color)
+          }
+        }
+        const idPorSector = new Map<string, string>()
+        if (coloresPorSector.size > 0) {
+          const { data: sectores, error: errorSectores } = await supabase
+            .from('sectores')
+            .insert(
+              [...coloresPorSector].map(([nombre, color], orden) => ({
+                edicion_id: edicion.id,
+                nombre,
+                color,
+                orden,
+              })),
+            )
+            .select('id, nombre')
+          if (errorSectores) throw errorSectores
+          for (const s of sectores) idPorSector.set(s.nombre, s.id)
+        }
+
         const { error: errorPart } = await supabase.from('participaciones').insert(
           conHandle.map((f) => ({
             edicion_id: edicion.id,
             emprendimiento_id: idPorHandle.get(f.handle!.trim().toLowerCase()),
             numero_mesa: f.numero,
-            sector: f.sector,
-            sector_color: f.sector_color,
+            sector_id: f.sector ? idPorSector.get(f.sector) : null,
           })),
         )
         if (errorPart) throw errorPart

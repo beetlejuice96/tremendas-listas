@@ -88,6 +88,27 @@ def mejor(actual: str | None, nuevo: str) -> str | None:
     return nuevo.strip() if nuevo and nuevo.strip() else actual
 
 
+def clave(texto: str) -> str:
+    """Normaliza para comparar nombres de catálogo sin tildes ni mayúsculas."""
+    import unicodedata
+
+    t = unicodedata.normalize("NFD", (texto or "").strip().lower())
+    return t.encode("ascii", "ignore").decode()
+
+
+def catalogo(sb, tabla: str, nombres: set[str]) -> dict[str, str]:
+    """Garantiza que existan esos nombres en un catálogo y devuelve {clave: id}."""
+    limpios = sorted({n.strip() for n in nombres if n and n.strip()})
+    if limpios:
+        sb.table(tabla).upsert(
+            [{"nombre": n} for n in limpios], on_conflict="nombre", ignore_duplicates=True
+        ).execute()
+    return {
+        clave(r["nombre"]): r["id"]
+        for r in sb.table(tabla).select("id,nombre").execute().data
+    }
+
+
 def sin_repetidos(filas: list[Fila]) -> list[Fila]:
     """Un emprendimiento por edición: alguna gente se postuló dos veces.
 
@@ -191,13 +212,21 @@ def main() -> int:
         }
 
         if postulantes:
+            ids_rubro = catalogo(sb, "rubros", {f.rubro for f in postulantes if f.rubro})
             sb.table("postulaciones").upsert([{
                 "edicion_id": edicion_id,
                 "emprendimiento_id": ids_empr[f.handle],
                 "descripcion": f.descripcion or None,
-                "rubro": f.rubro or None,
+                "rubro_id": ids_rubro.get(clave(f.rubro)),
                 "indumentaria": clasificar_indumentaria(f.indumentaria),
-                "tipo_puesto_pedido": (nombre_tipo_puesto(f.puesto) or (None,))[0],
+                "tipo_puesto_id": ids_tipo.get((nombre_tipo_puesto(f.puesto) or (None,))[0]),
+                # Snapshot de contacto tal como llegó en esta edición.
+                "email": f.email or None,
+                "celular": f.celular or None,
+                "ciudad": f.ciudad or None,
+                "web": f.web or None,
+                "nombre_proyecto": f.nombre_proyecto or None,
+                "responsable": f.responsable or None,
             } for f in postulantes], on_conflict="edicion_id,emprendimiento_id").execute()
 
         ids_post = {
@@ -205,6 +234,26 @@ def main() -> int:
             for p in sb.table("postulaciones").select("id,emprendimiento_id")
               .eq("edicion_id", edicion_id).execute().data
         }
+
+        # Productos: la lista 'Fanzine, Poster, Stickers' se guarda como relaciones.
+        sueltos = {
+            p.strip()
+            for f in postulantes for p in f.productos.split(",") if p.strip()
+        }
+        if sueltos:
+            ids_producto = catalogo(sb, "productos", sueltos)
+            relaciones = [
+                {"postulacion_id": ids_post[ids_empr[f.handle]],
+                 "producto_id": ids_producto[clave(p)]}
+                for f in postulantes if ids_post.get(ids_empr[f.handle])
+                for p in {x.strip() for x in f.productos.split(",") if x.strip()}
+                if clave(p) in ids_producto
+            ]
+            for i in range(0, len(relaciones), 500):
+                sb.table("postulacion_productos").upsert(
+                    relaciones[i:i + 500], on_conflict="postulacion_id,producto_id",
+                    ignore_duplicates=True,
+                ).execute()
 
         if seleccionados:
             registros = []

@@ -104,6 +104,7 @@ class Columnas:
     descripcion: int | None = None
     puesto: int | None = None
     indumentaria: int | None = None
+    productos: int | None = None
     montos: list[int] = field(default_factory=list)
 
 
@@ -168,6 +169,7 @@ def detectar_columnas(filas: list[list[str]], header: list[str]) -> Columnas:
         "responsable": ("nombre y apellido", "nombre"),
         "ciudad": ("ciudad", "ubicacion"),
         "rubro": ("rubro",),
+        "productos": ("productos de esta lista", "productos"),
     }
     usadas = {c for c in (cols.handle, cols.email, cols.celular, cols.web,
                           cols.puesto, cols.indumentaria, cols.descripcion) if c is not None}
@@ -230,6 +232,7 @@ class Fila:
     descripcion: str = ""
     puesto: str = ""
     indumentaria: str = ""
+    productos: str = ""
     montos: list[float] = field(default_factory=list)
     excluida: bool = False       # está debajo de "NO VIENEN" / "se bajaron"
     sin_instagram: bool = False  # identificada por mail: necesita revisión humana
@@ -276,6 +279,7 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
             descripcion=valor(fila, cols.descripcion),
             puesto=valor(fila, cols.puesto),
             indumentaria=valor(fila, cols.indumentaria),
+            productos=valor(fila, cols.productos),
             montos=montos,
             excluida=excluidas,
         ))

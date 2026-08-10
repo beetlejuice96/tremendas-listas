@@ -25,14 +25,16 @@ export interface ParticipacionConEmprendimiento {
   id: string
   edicion_id: string
   numero_mesa: number | null
-  sector: string | null
-  sector_color: string | null
   llegado_at: string | null
   created_at: string
   emprendimientos: {
     handle: string
     nombre_proyecto: string
     responsable: string | null
+  } | null
+  sectores: {
+    nombre: string
+    color: string | null
   } | null
 }
 
@@ -43,8 +45,8 @@ export function aFeriante(p: ParticipacionConEmprendimiento): Feriante {
     proyecto: p.emprendimientos?.nombre_proyecto ?? '(sin nombre)',
     responsable: p.emprendimientos?.responsable ?? null,
     numero: p.numero_mesa,
-    sector: p.sector,
-    sector_color: p.sector_color,
+    sector: p.sectores?.nombre ?? null,
+    sector_color: p.sectores?.color ?? null,
     handle: p.emprendimientos?.handle ?? null,
     llegado_at: p.llegado_at,
     created_at: p.created_at,

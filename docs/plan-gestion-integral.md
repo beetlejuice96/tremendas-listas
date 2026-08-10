@@ -74,64 +74,92 @@ El cambio central: separar **el emprendimiento** (que persiste entre ediciones) 
 **su participación en cada edición**.
 
 ```sql
+-- Catálogos ------------------------------------------------------------------
+owners (id, nombre unique, activo)          -- las dos organizadoras
+rubros (id, nombre unique, fusionado_en)    -- el form los deja escribir libre
+productos (id, nombre unique)
+
 -- Identidad estable. Clave natural: handle de Instagram normalizado.
 emprendimientos (
   id, handle unique, nombre_proyecto, responsable,
-  email, celular, web, ciudad,
+  email, celular, web, ciudad,              -- el dato de contacto más reciente
   es_federal boolean default false,
-  notas,                              -- acumuladas entre ediciones
-  created_at
+  notas, created_at, updated_at
 )
 
 ediciones (
   id, nombre, fecha,
   fecha_limite_sena, fecha_limite_pago,
-  cancelada boolean default false,    -- noviembre 2025
-  created_at
+  cancelada boolean default false,          -- noviembre 2025
+  created_at, updated_at
 )
 
-tipos_puesto (                        -- los precios cambian entre ediciones
-  id, edicion_id, nombre, precio, cupo, orden
-)
+tipos_puesto (id, edicion_id, nombre, precio, cupo, orden)
+sectores (id, edicion_id, nombre, color, orden)   -- el color es del sector
+grupos_mesa (id, edicion_id, nota)                -- "van juntas"
 
-postulaciones (                       -- snapshot de lo que mandó ESA edición
+postulaciones (                             -- snapshot de lo que mandó ESA edición
   id, edicion_id, emprendimiento_id,
-  descripcion, rubro, productos, mensaje,
-  indumentaria,                       -- sin_prendas | talles_ok | talles_insuficientes
-  tiene_taller boolean,
-  fotos_url, tipo_puesto_pedido,
-  created_at
+  descripcion, mensaje, rubro_id, tipo_puesto_id,
+  indumentaria,                             -- sin_prendas | talles_ok | talles_insuficientes
+  tiene_taller boolean, fotos_url,
+  -- Contacto tal como llegó ese día: un cambio de mail no borra el anterior.
+  email, celular, ciudad, web, nombre_proyecto, responsable,
+  created_at, updated_at,
+  unique (edicion_id, emprendimiento_id)
 )
+
+postulacion_productos (postulacion_id, producto_id)   -- N:M
 
 votos (
-  id, postulacion_id, owner, voto,    -- si | no | tal_vez
-  updated_at, unique (postulacion_id, owner)
+  id, postulacion_id, owner_id, voto,       -- si | no | tal_vez
+  updated_at, unique (postulacion_id, owner_id)
 )
 
-participaciones (                     -- reemplaza la tabla `feriantes` actual
+participaciones (
   id, edicion_id, emprendimiento_id,
-  postulacion_id,                     -- null si fue invitación directa
-  tipo_puesto_id,
-  precio_final,                       -- precio del puesto, -25% si es federal
+  postulacion_id,                           -- null si fue invitación directa
+  tipo_puesto_id, sector_id, grupo_mesa_id,
+  precio_final,                             -- lo efectivamente cobrado
+  descuento_pct,                            -- 25 para federales, por edición
   no_paga boolean,
-  estado,                             -- confirmada | se_bajo | no_vino
+  estado,                                   -- confirmada | se_bajo | no_vino
   mail_enviado_at,
-  fotos_estado, fotos_nota,           -- pendiente | ok | pedir_mas
-  numero_mesa, sector, sector_color,
-  comparte_con,                       -- self-ref: "van juntas"
-  nota_ubicacion, notas,
-  llegado_at                          -- el día de la feria
+  fotos_estado, fotos_nota,                 -- pendiente | ok | pedir_mas
+  numero_mesa, nota_ubicacion, notas,
+  llegado_at,                               -- el día de la feria
+  unique (edicion_id, emprendimiento_id),
+  unique (edicion_id, numero_mesa),         -- dos puestos no comparten mesa
+  check (llegado_at is null or estado = 'confirmada')
 )
 
-pagos (                               -- N por participación, monto libre
-  id, participacion_id,
-  monto, fecha, cuenta,               -- ceci | cata
-  registrado_por, created_at
+pagos (                                     -- N por participación, monto libre
+  id, participacion_id, monto, fecha,
+  cuenta_id, registrado_por_id, created_at
 )
 ```
 
 Total pagado = suma de `pagos`. Saldo = `precio_final − pagado`. Eso cubre pagos
 parciales de cualquier monto, pagos de más y pagos en varias cuotas sin casos especiales.
+
+### Decisiones de diseño
+
+**`precio_final` es desnormalizado a propósito.** Se podría calcular desde
+`tipos_puesto` y `descuento_pct`, pero es el registro de lo que se le cobró a esa
+persona: si el precio del puesto sube el año que viene, lo cobrado en marzo no
+puede cambiar retroactivamente.
+
+**`es_federal` vive en el emprendimiento; `descuento_pct` en la participación.**
+Ser federal es una propiedad de dónde está radicado el proyecto. Que el descuento
+se haya aplicado es un hecho de cada edición, y puede no aplicarse.
+
+**Los rubros se pueden fusionar sin perder el original.** El formulario deja
+escribir el rubro libremente, así que llegan variantes de lo mismo. Las que sólo
+diferían en tildes o mayúsculas ya están unificadas; `fusionado_en` permite
+agrupar el resto sin borrar lo que la persona escribió.
+
+**Las vistas `historial_emprendimientos` y `estado_cobro`** resuelven los conteos
+y el saldo con agregaciones, para no repetir la lógica en cada consulta.
 
 ## Perfil del emprendimiento
 
