@@ -1,10 +1,10 @@
 # Activar el PIN de acceso
 
-El código ya está listo. Falta crear la cuenta compartida del equipo, que es un
-paso que tenés que hacer vos: definir una contraseña no es algo que deba hacer yo
-por vos.
+Estado: **pasos 1 a 3 hechos**. El usuario `equipo@tremendaferia.com` existe y está
+confirmado, la variable está cargada en Vercel, y producción pide el PIN.
 
-Mientras no lo hagas, **la app sigue funcionando sin PIN** (queda como está hoy).
+Queda el **paso 4**: cerrar el acceso anónimo a la base. Va después de confirmar que
+el PIN entra bien, porque si se aplica antes la app deja de leer datos.
 
 ## 1. Crear el usuario del equipo
 
