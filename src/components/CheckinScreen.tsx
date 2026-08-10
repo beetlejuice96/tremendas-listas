@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizeText, formatHora } from '../lib/text'
 import MapaView from './MapaView'
+import CobrosScreen from './CobrosScreen'
 import { aFeriante } from '../types'
 import type { Edicion, Feriante, ParticipacionConEmprendimiento } from '../types'
 
@@ -14,16 +15,24 @@ interface Props {
   edicion: Edicion
   onBack: () => void
   onVerPerfil: (emprendimientoId: string) => void
+  onEdicionActualizada: (edicion: Edicion) => void
 }
 
 type Filtro = 'todos' | 'pendientes' | 'llegaron'
 
-export default function CheckinScreen({ edicion, onBack, onVerPerfil }: Props) {
+export default function CheckinScreen({
+  edicion,
+  onBack,
+  onVerPerfil,
+  onEdicionActualizada,
+}: Props) {
   const [feriantes, setFeriantes] = useState<Feriante[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [sectoresActivos, setSectoresActivos] = useState<Set<string>>(new Set())
-  const [vista, setVista] = useState<'lista' | 'mapa'>('lista')
+  // Antes de la feria lo que se usa es el seguimiento de cobros; el día de la
+  // feria, el check-in. Por eso arranca en cobros salvo que ya haya llegadas.
+  const [vista, setVista] = useState<'cobros' | 'lista' | 'mapa'>('cobros')
 
   function toggleSector(sector: string) {
     setSectoresActivos((prev) => {
@@ -140,6 +149,7 @@ export default function CheckinScreen({ edicion, onBack, onVerPerfil }: Props) {
         <div className="mb-3 flex rounded-full bg-zinc-800 p-1">
           {(
             [
+              ['cobros', 'Cobros'],
               ['lista', 'Lista'],
               ['mapa', 'Mapa'],
             ] as const
@@ -211,6 +221,14 @@ export default function CheckinScreen({ edicion, onBack, onVerPerfil }: Props) {
           </>
         )}
       </header>
+
+      {vista === 'cobros' && (
+        <CobrosScreen
+          edicion={edicion}
+          onVerPerfil={onVerPerfil}
+          onEdicionActualizada={onEdicionActualizada}
+        />
+      )}
 
       {vista === 'mapa' && feriantes !== null && (
         <MapaView feriantes={feriantes} onToggle={toggleLlegada} />

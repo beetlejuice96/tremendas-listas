@@ -90,6 +90,12 @@ export default function App() {
       edicion={edicionActiva}
       onBack={salirDeEdicion}
       onVerPerfil={setPerfilId}
+      onEdicionActualizada={(actualizada) => {
+        setEdicionActiva(actualizada)
+        setEdiciones((prev) =>
+          prev?.map((e) => (e.id === actualizada.id ? actualizada : e)) ?? prev,
+        )
+      }}
     />
   )
 }

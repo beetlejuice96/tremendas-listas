@@ -2,6 +2,8 @@ export interface Edicion {
   id: string
   nombre: string
   fecha: string | null
+  fecha_limite_sena: string | null
+  fecha_limite_pago: string | null
   cancelada: boolean
   created_at: string
 }
@@ -53,6 +55,54 @@ export interface ResumenEmprendimiento {
   veces_seleccionado: number
   veces_se_bajo: number
   ultima_participacion: string | null
+}
+
+/** Fila de la vista `gestion_edicion`: el seguimiento de cobro de un puesto. */
+export interface FilaGestion {
+  id: string
+  edicion_id: string
+  emprendimiento_id: string
+  handle: string
+  nombre_proyecto: string
+  responsable: string | null
+  celular: string | null
+  email: string | null
+  es_federal: boolean
+  estado: string
+  tipo_puesto_id: string | null
+  tipo_puesto: string | null
+  precio_lista: number | null
+  precio_final: number | null
+  descuento_pct: number
+  no_paga: boolean
+  mail_enviado_at: string | null
+  fotos_estado: string | null
+  fotos_nota: string | null
+  numero_mesa: number | null
+  notas: string | null
+  pagado: number
+  saldo: number
+}
+
+export interface Pago {
+  id: string
+  participacion_id: string
+  monto: number
+  fecha: string | null
+  cuenta_id: string | null
+  created_at: string
+}
+
+export interface Owner {
+  id: string
+  nombre: string
+}
+
+export interface TipoPuesto {
+  id: string
+  nombre: string
+  precio: number
+  orden: number
 }
 
 /** Fila de la vista `linea_tiempo`: qué pasó en cada edición. */

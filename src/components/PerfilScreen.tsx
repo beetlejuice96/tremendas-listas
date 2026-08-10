@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatHora } from '../lib/text'
+import { formatHora, pesos, soloDigitos } from '../lib/text'
 import type { HitoEdicion, ResumenEmprendimiento } from '../types'
 
 interface Props {
@@ -25,16 +25,6 @@ const INDUMENTARIA: Record<string, string> = {
   sin_prendas: 'No vende indumentaria',
   talles_ok: 'Talles llegan al mínimo',
   talles_insuficientes: 'Talles por debajo del mínimo',
-}
-
-function pesos(monto: number | null): string {
-  if (monto == null) return '—'
-  return '$' + Math.round(monto).toLocaleString('es-AR')
-}
-
-function soloDigitos(cel: string): string {
-  const n = cel.replace(/\D/g, '')
-  return n.startsWith('54') ? n : `54${n.replace(/^0/, '')}`
 }
 
 export default function PerfilScreen({ emprendimientoId, onBack }: Props) {
