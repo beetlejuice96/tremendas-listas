@@ -39,8 +39,11 @@ export default function DirectorioScreen({ onVerPerfil, onBack }: Props) {
           ).includes(q),
         )
       : todos
+    // Varios nombres vienen con '@' o '_' adelante; sin sacarlos quedarían todos
+    // amontonados al principio del alfabético.
     const porNombre = (a: ResumenEmprendimiento, b: ResumenEmprendimiento) =>
-      a.nombre_proyecto.localeCompare(b.nombre_proyecto, 'es')
+      a.nombre_proyecto.replace(/^[@_.\s]+/, '')
+        .localeCompare(b.nombre_proyecto.replace(/^[@_.\s]+/, ''), 'es')
     return [...filtrados].sort((a, b) => {
       if (orden === 'nombre') return porNombre(a, b)
       if (orden === 'postulaciones') {
@@ -71,18 +74,19 @@ export default function DirectorioScreen({ onVerPerfil, onBack }: Props) {
           className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-base text-white placeholder-zinc-500 outline-none focus:bg-zinc-700"
         />
 
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex items-center gap-2">
+          <span className="shrink-0 text-xs text-zinc-500">Ordenar por</span>
           {(
             [
-              ['participaciones', 'Más veces'],
-              ['postulaciones', 'Más postulan'],
-              ['nombre', 'A-Z'],
+              ['participaciones', 'Participaciones'],
+              ['postulaciones', 'Postulaciones'],
+              ['nombre', 'Nombre'],
             ] as const
           ).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setOrden(key)}
-              className={`flex-1 rounded-full py-1.5 text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-colors ${
                 orden === key ? 'bg-white text-zinc-900' : 'bg-zinc-800 text-zinc-400'
               }`}
             >

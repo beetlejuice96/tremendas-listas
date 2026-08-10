@@ -277,9 +277,18 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
             elif CORTE_BAJA.match(llenas[0]):
                 exclusion = "baja"
         handle = normalizar_handle(valor(fila, cols.handle))
+        # Cuando la columna esperada viene vacía el Instagram suele estar corrido a
+        # otra (en mayo 2026 aparece en la del celular). Buscarlo en toda la fila
+        # evita partir un mismo emprendimiento en dos identidades distintas.
+        if not handle:
+            for celda in fila:
+                if "instagram.com" in celda.lower():
+                    handle = normalizar_handle(celda)
+                    if handle:
+                        break
         email = valor(fila, cols.email)
-        # Sin Instagram, el mail alcanza como identidad: si no, se pierden
-        # participaciones y pagos reales (pasa en mayo 2026 con 3 feriantes).
+        # Recién si no hay Instagram en ningún lado se cae al mail como identidad:
+        # descartar la fila perdería participaciones y pagos reales.
         sin_instagram = not handle
         if sin_instagram:
             if "@" not in email:
