@@ -217,6 +217,8 @@ def main() -> int:
                 "edicion_id": edicion_id,
                 "emprendimiento_id": ids_empr[f.handle],
                 "descripcion": f.descripcion or None,
+                "mensaje": f.mensaje or None,
+                "fotos_url": f.fotos or None,
                 "rubro_id": ids_rubro.get(clave(f.rubro)),
                 "indumentaria": clasificar_indumentaria(f.indumentaria),
                 "tipo_puesto_id": ids_tipo.get((nombre_tipo_puesto(f.puesto) or (None,))[0]),

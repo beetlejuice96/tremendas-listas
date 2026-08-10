@@ -114,6 +114,8 @@ class Columnas:
     puesto: int | None = None
     indumentaria: int | None = None
     productos: int | None = None
+    fotos: int | None = None
+    mensaje: int | None = None
     montos: list[int] = field(default_factory=list)
 
 
@@ -138,13 +140,33 @@ def detectar_columnas(filas: list[list[str]], header: list[str]) -> Columnas:
         j, n = max(marcador.items(), key=lambda kv: kv[1], default=(None, 0))
         return j if n >= minimo else None
 
+    # Algunas columnas se reconocen sin lugar a dudas por su título y hay que
+    # resolverlas antes: la de fotos está llena de links de Drive y, si no se
+    # reserva primero, la detección por contenido se la lleva como si fuera la web.
+    por_titulo: dict[str, int] = {}
+    for campo, claves in (
+        ("fotos", ("link de drive", "fotos de tus productos", "adjuntalas")),
+        ("mensaje", ("contanos algo", "por que queres participar")),
+    ):
+        for j, titulo in enumerate(header):
+            if any(k in _texto(titulo) for k in claves):
+                por_titulo[campo] = j
+                break
+    reservadas = set(por_titulo.values())
+
     cols.handle = mejor(lambda v: normalizar_handle(v) is not None and (
         "instagram" in v.lower() or v.startswith("@")
     ))
     cols.email = mejor(lambda v: "@" in v and "." in v.split("@")[-1])
     cols.celular = mejor(lambda v: bool(SOLO_DIGITOS.match(v)) and len(re.sub(r"\D", "", v)) >= 8)
-    cols.web = mejor(lambda v: ("http" in v.lower() or "www." in v.lower())
-                     and "instagram" not in v.lower())
+    def mejor_libre(test, minimo: int = 3) -> int | None:
+        """Como `mejor`, pero ignorando las columnas ya reservadas por título."""
+        marcador = {j: n for j, n in puntajes(test).items() if j not in reservadas}
+        j, n = max(marcador.items(), key=lambda kv: kv[1], default=(None, 0))
+        return j if n >= minimo else None
+
+    cols.web = mejor_libre(lambda v: ("http" in v.lower() or "www." in v.lower())
+                           and "instagram" not in v.lower())
     cols.puesto = mejor(lambda v: "$" in v and ("espacio" in _texto(v) or "mesa" in _texto(v)))
     cols.indumentaria = mejor(lambda v: "prenda" in _texto(v) or "modelos" in _texto(v))
     cols.descripcion = mejor(lambda v: len(v) > 120, minimo=5)
@@ -180,6 +202,8 @@ def detectar_columnas(filas: list[list[str]], header: list[str]) -> Columnas:
         "rubro": ("rubro",),
         "productos": ("productos de esta lista", "productos"),
     }
+    for campo, j in por_titulo.items():
+        setattr(cols, campo, j)
     usadas = {c for c in (cols.handle, cols.email, cols.celular, cols.web,
                           cols.puesto, cols.indumentaria, cols.descripcion) if c is not None}
     for campo, claves in pistas.items():
@@ -242,6 +266,8 @@ class Fila:
     puesto: str = ""
     indumentaria: str = ""
     productos: str = ""
+    fotos: str = ""
+    mensaje: str = ""
     montos: list[float] = field(default_factory=list)
     # None = participó. 'baja' = quedó pero se cayó. 'descarte' = nunca quedó.
     exclusion: str | None = None
@@ -309,6 +335,8 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
             puesto=valor(fila, cols.puesto),
             indumentaria=valor(fila, cols.indumentaria),
             productos=valor(fila, cols.productos),
+            fotos=valor(fila, cols.fotos),
+            mensaje=valor(fila, cols.mensaje),
             montos=montos,
             exclusion=exclusion,
         ))

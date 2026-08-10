@@ -16,6 +16,7 @@ interface Props {
   onBack: () => void
   onVerPerfil: (emprendimientoId: string) => void
   onEdicionActualizada: (edicion: Edicion) => void
+  onCurar: () => void
 }
 
 type Filtro = 'todos' | 'pendientes' | 'llegaron'
@@ -25,6 +26,7 @@ export default function CheckinScreen({
   onBack,
   onVerPerfil,
   onEdicionActualizada,
+  onCurar,
 }: Props) {
   const [feriantes, setFeriantes] = useState<Feriante[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -147,6 +149,13 @@ export default function CheckinScreen({
         </div>
 
         <div className="mb-3 flex rounded-full bg-zinc-800 p-1">
+          {/* Curaduría abre pantalla completa: necesita todo el alto para la ficha. */}
+          <button
+            onClick={onCurar}
+            className="flex-1 rounded-full py-1.5 text-sm font-medium text-zinc-400"
+          >
+            Curar
+          </button>
           {(
             [
               ['cobros', 'Cobros'],

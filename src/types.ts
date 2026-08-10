@@ -57,6 +57,32 @@ export interface ResumenEmprendimiento {
   ultima_participacion: string | null
 }
 
+export type Voto = 'si' | 'tal_vez' | 'no'
+
+/** Fila de la vista `curaduria`: una postulación con su historia con la feria. */
+export interface FichaCuraduria {
+  id: string
+  edicion_id: string
+  emprendimiento_id: string
+  handle: string
+  nombre_proyecto: string
+  responsable: string | null
+  ciudad: string | null
+  descripcion: string | null
+  mensaje: string | null
+  fotos_url: string | null
+  indumentaria: string | null
+  tiene_taller: boolean | null
+  rubro: string | null
+  puesto_pedido: string | null
+  es_federal: boolean
+  veces_participo: number
+  veces_postulo: number
+  veces_se_bajo: number
+  productos: string | null
+  votos_emitidos: number
+}
+
 /** Fila de la vista `gestion_edicion`: el seguimiento de cobro de un puesto. */
 export interface FilaGestion {
   id: string

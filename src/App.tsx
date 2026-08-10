@@ -6,6 +6,8 @@ import EdicionesScreen from './components/EdicionesScreen'
 import CheckinScreen from './components/CheckinScreen'
 import DirectorioScreen from './components/DirectorioScreen'
 import PerfilScreen from './components/PerfilScreen'
+import CuraduriaScreen from './components/CuraduriaScreen'
+import CruceScreen from './components/CruceScreen'
 import PantallaPin from './components/PantallaPin'
 
 const STORAGE_KEY = 'tremendas-edicion-activa'
@@ -20,6 +22,7 @@ export default function App() {
   const [ediciones, setEdiciones] = useState<Edicion[] | null>(null)
   const [edicionActiva, setEdicionActiva] = useState<Edicion | null>(null)
   const [verDirectorio, setVerDirectorio] = useState(false)
+  const [curando, setCurando] = useState<'votar' | 'cruce' | null>(null)
   // El perfil se abre encima de lo que estés mirando y vuelve ahí al cerrarse.
   const [perfilId, setPerfilId] = useState<string | null>(null)
 
@@ -76,6 +79,21 @@ export default function App() {
   if (verDirectorio) {
     return <DirectorioScreen onVerPerfil={setPerfilId} onBack={() => setVerDirectorio(false)} />
   }
+  if (curando && edicionActiva) {
+    return curando === 'votar' ? (
+      <CuraduriaScreen
+        edicion={edicionActiva}
+        onBack={() => setCurando(null)}
+        onVerResultados={() => setCurando('cruce')}
+      />
+    ) : (
+      <CruceScreen
+        edicion={edicionActiva}
+        onBack={() => setCurando('votar')}
+        onVerPerfil={setPerfilId}
+      />
+    )
+  }
   if (!edicionActiva) {
     return (
       <EdicionesScreen
@@ -90,6 +108,7 @@ export default function App() {
       edicion={edicionActiva}
       onBack={salirDeEdicion}
       onVerPerfil={setPerfilId}
+      onCurar={() => setCurando('votar')}
       onEdicionActualizada={(actualizada) => {
         setEdicionActiva(actualizada)
         setEdiciones((prev) =>
