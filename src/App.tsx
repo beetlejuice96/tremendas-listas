@@ -4,6 +4,8 @@ import { supabase } from './lib/supabase'
 import type { Edicion } from './types'
 import EdicionesScreen from './components/EdicionesScreen'
 import CheckinScreen from './components/CheckinScreen'
+import DirectorioScreen from './components/DirectorioScreen'
+import PerfilScreen from './components/PerfilScreen'
 import PantallaPin from './components/PantallaPin'
 
 const STORAGE_KEY = 'tremendas-edicion-activa'
@@ -17,6 +19,9 @@ export default function App() {
   const [sesionLista, setSesionLista] = useState(!PIN_ACTIVO)
   const [ediciones, setEdiciones] = useState<Edicion[] | null>(null)
   const [edicionActiva, setEdicionActiva] = useState<Edicion | null>(null)
+  const [verDirectorio, setVerDirectorio] = useState(false)
+  // El perfil se abre encima de lo que estés mirando y vuelve ahí al cerrarse.
+  const [perfilId, setPerfilId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!PIN_ACTIVO) return
@@ -65,10 +70,28 @@ export default function App() {
   if (!autenticado) return <PantallaPin />
   if (ediciones === null) return <Cargando />
 
-  if (!edicionActiva) {
-    return <EdicionesScreen ediciones={ediciones} onSelect={seleccionarEdicion} />
+  if (perfilId) {
+    return <PerfilScreen emprendimientoId={perfilId} onBack={() => setPerfilId(null)} />
   }
-  return <CheckinScreen edicion={edicionActiva} onBack={salirDeEdicion} />
+  if (verDirectorio) {
+    return <DirectorioScreen onVerPerfil={setPerfilId} onBack={() => setVerDirectorio(false)} />
+  }
+  if (!edicionActiva) {
+    return (
+      <EdicionesScreen
+        ediciones={ediciones}
+        onSelect={seleccionarEdicion}
+        onVerDirectorio={() => setVerDirectorio(true)}
+      />
+    )
+  }
+  return (
+    <CheckinScreen
+      edicion={edicionActiva}
+      onBack={salirDeEdicion}
+      onVerPerfil={setPerfilId}
+    />
+  )
 }
 
 function Cargando() {

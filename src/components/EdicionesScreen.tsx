@@ -6,9 +6,10 @@ import type { Edicion } from '../types'
 interface Props {
   ediciones: Edicion[]
   onSelect: (edicion: Edicion) => void
+  onVerDirectorio: () => void
 }
 
-export default function EdicionesScreen({ ediciones, onSelect }: Props) {
+export default function EdicionesScreen({ ediciones, onSelect, onVerDirectorio }: Props) {
   const [creando, setCreando] = useState(false)
   const [nombre, setNombre] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
@@ -150,12 +151,26 @@ export default function EdicionesScreen({ ediciones, onSelect }: Props) {
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => setCreando(true)}
-            className="w-full rounded-2xl bg-zinc-900 py-4 text-base font-semibold text-white shadow-sm active:bg-zinc-700"
-          >
-            + Nueva edición
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={onVerDirectorio}
+              className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-4 text-left shadow-sm active:bg-zinc-50"
+            >
+              <span>
+                <span className="block font-semibold text-zinc-900">Emprendimientos</span>
+                <span className="block text-xs text-zinc-500">
+                  Buscar cualquier proyecto y ver su historial
+                </span>
+              </span>
+              <span className="text-zinc-400">›</span>
+            </button>
+            <button
+              onClick={() => setCreando(true)}
+              className="w-full rounded-2xl bg-zinc-900 py-4 text-base font-semibold text-white shadow-sm active:bg-zinc-700"
+            >
+              + Nueva edición
+            </button>
+          </div>
         )}
 
         {ediciones.length > 0 && (

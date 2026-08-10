@@ -6,18 +6,19 @@ import { aFeriante } from '../types'
 import type { Edicion, Feriante, ParticipacionConEmprendimiento } from '../types'
 
 const CAMPOS_PARTICIPACION =
-  'id, edicion_id, numero_mesa, llegado_at, created_at,' +
+  'id, edicion_id, emprendimiento_id, numero_mesa, llegado_at, created_at,' +
   ' emprendimientos ( handle, nombre_proyecto, responsable ),' +
   ' sectores ( nombre, color )'
 
 interface Props {
   edicion: Edicion
   onBack: () => void
+  onVerPerfil: (emprendimientoId: string) => void
 }
 
 type Filtro = 'todos' | 'pendientes' | 'llegaron'
 
-export default function CheckinScreen({ edicion, onBack }: Props) {
+export default function CheckinScreen({ edicion, onBack, onVerPerfil }: Props) {
   const [feriantes, setFeriantes] = useState<Feriante[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
@@ -240,13 +241,16 @@ export default function CheckinScreen({ edicion, onBack }: Props) {
               <span className="mt-0.5 text-[10px] leading-none">{f.sector ?? ''}</span>
             </div>
 
-            <div className="min-w-0 flex-1">
+            <button
+              onClick={() => onVerPerfil(f.emprendimiento_id)}
+              className="min-w-0 flex-1 text-left active:opacity-60"
+            >
               <div className="font-semibold leading-tight text-zinc-900">{f.proyecto}</div>
               {f.responsable && (
                 <div className="truncate text-sm text-zinc-600">{f.responsable}</div>
               )}
               {f.handle && <div className="truncate text-xs text-zinc-400">@{f.handle}</div>}
-            </div>
+            </button>
 
             <button
               onClick={() => toggleLlegada(f)}
