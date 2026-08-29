@@ -63,6 +63,21 @@ EDICIONES = [
             excluir={"conimarchini"}),
 ]
 
+# Emprendimientos que en alguna planilla no traen Instagram legible y por eso se
+# identificarían por mail, creando un duplicado del registro que ya existe. El
+# mapeo se resolvió a mano comparando mail, nombre, teléfono y responsable.
+ALIAS_POR_MAIL = {
+    "mail:moralejojuanmanuel@gmail.com": "elflemmi",
+    "mail:catalinasomoza@gmail.com": "kta.ilustra",
+    "mail:medina_maga@yahoo.com.ar": "magali.medina.dibujitos",
+    "mail:chuladibuja@gmail.com": "chuladibuja",
+    "mail:bl@xeltic.com.ar": "miku_divertipads",
+    "mail:guidojulianpalmieri@gmail.com": "soybasta",
+    "mail:adri.mignini@gmail.com": "adri._.ilustra",
+    "mail:malbecc.art@gmail.com": "_malbecc",
+    "mail:tallerchinita@hotmail.com": "tallerchinita",
+}
+
 INDUMENTARIA = {
     "no tengo ninguna prenda": "sin_prendas",
     "al menos el 50%": "talles_ok",
@@ -136,8 +151,12 @@ def main() -> int:
     por_edicion: dict[str, tuple[list[Fila], list[Fila]]] = {}
 
     for ed in EDICIONES:
-        postulantes = sin_repetidos(parsear(DATA / ed.convocatoria)[0])
-        seleccionados = sin_repetidos(parsear(DATA / ed.seleccionados)[0])
+        postulantes = parsear(DATA / ed.convocatoria)[0]
+        seleccionados = parsear(DATA / ed.seleccionados)[0]
+        for fila in postulantes + seleccionados:
+            fila.handle = ALIAS_POR_MAIL.get(fila.handle, fila.handle)
+        postulantes = sin_repetidos(postulantes)
+        seleccionados = sin_repetidos(seleccionados)
         for fila in seleccionados:
             if fila.handle in ed.excluir:
                 fila.exclusion = "baja"
