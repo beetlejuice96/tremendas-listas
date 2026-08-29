@@ -8,6 +8,7 @@ import DirectorioScreen from './components/DirectorioScreen'
 import PerfilScreen from './components/PerfilScreen'
 import CuraduriaScreen from './components/CuraduriaScreen'
 import CruceScreen from './components/CruceScreen'
+import { CURADURIA_HABILITADA } from './config'
 import PantallaPin from './components/PantallaPin'
 
 const STORAGE_KEY = 'tremendas-edicion-activa'
@@ -79,7 +80,7 @@ export default function App() {
   if (verDirectorio) {
     return <DirectorioScreen onVerPerfil={setPerfilId} onBack={() => setVerDirectorio(false)} />
   }
-  if (curando && edicionActiva) {
+  if (CURADURIA_HABILITADA && curando && edicionActiva) {
     return curando === 'votar' ? (
       <CuraduriaScreen
         edicion={edicionActiva}

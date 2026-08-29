@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizeText, formatHora } from '../lib/text'
 import MapaView from './MapaView'
+import { CURADURIA_HABILITADA } from '../config'
 import CobrosScreen from './CobrosScreen'
 import { aFeriante } from '../types'
 import type { Edicion, Feriante, ParticipacionConEmprendimiento } from '../types'
@@ -150,12 +151,14 @@ export default function CheckinScreen({
 
         <div className="mb-3 flex rounded-full bg-zinc-800 p-1">
           {/* Curaduría abre pantalla completa: necesita todo el alto para la ficha. */}
-          <button
-            onClick={onCurar}
-            className="flex-1 rounded-full py-1.5 text-sm font-medium text-zinc-400"
-          >
-            Curar
-          </button>
+          {CURADURIA_HABILITADA && (
+            <button
+              onClick={onCurar}
+              className="flex-1 rounded-full py-1.5 text-sm font-medium text-zinc-400"
+            >
+              Curar
+            </button>
+          )}
           {(
             [
               ['cobros', 'Cobros'],
