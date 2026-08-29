@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatHora, pesos, soloDigitos } from '../lib/text'
+import Puntos from './Puntos'
 import type { HitoEdicion, ResumenEmprendimiento } from '../types'
 
 interface Props {
@@ -167,6 +168,8 @@ export default function PerfilScreen({ emprendimientoId, onBack }: Props) {
             <p className="whitespace-pre-line text-sm text-amber-900">{detalle.notas}</p>
           </section>
         )}
+
+        <Puntos emprendimientoId={emprendimientoId} />
 
         <section>
           <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">

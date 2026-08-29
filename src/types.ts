@@ -175,3 +175,16 @@ export interface FerianteImport {
   sector_color: string | null
   handle: string | null
 }
+
+/** Un punto positivo o negativo de un emprendimiento. Es memoria del equipo:
+ *  no altera la selección de ninguna edición ni excluye a nadie. */
+export interface Punto {
+  id: string
+  emprendimiento_id: string
+  edicion_id: string | null
+  signo: 'positivo' | 'negativo'
+  descripcion: string
+  autor: string | null
+  created_at: string
+  ediciones?: { nombre: string } | null
+}
