@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -30,6 +30,9 @@ class Edicion:
     convocatoria: str
     seleccionados: str
     cancelada: bool = False
+    # Handles que la planilla lista pero que no participan, sin un rótulo que lo
+    # indique. Se registran como baja para que queden en el historial.
+    excluir: set = field(default_factory=set)
 
 
 EDICIONES = [
@@ -54,7 +57,10 @@ EDICIONES = [
             "seleccionados 12 de julio 2026.xlsx"),
     Edicion("Septiembre 2026", "2026-09-13",
             "Convocatoria Tremenda Feria SEPTIEMBRE (respuestas) - Respuestas de formulario 1.csv",
-            "🌷 \xa0Seleccionados SEPTIEMBRE - Hoja 1.csv"),
+            "seleccionados 13 de septiembre 2026.xlsx",
+            # Coni Marchini figura al final de la planilla, separada del resto:
+            # quedó seleccionada pero no viene a la feria.
+            excluir={"conimarchini"}),
 ]
 
 INDUMENTARIA = {
@@ -132,6 +138,9 @@ def main() -> int:
     for ed in EDICIONES:
         postulantes = sin_repetidos(parsear(DATA / ed.convocatoria)[0])
         seleccionados = sin_repetidos(parsear(DATA / ed.seleccionados)[0])
+        for fila in seleccionados:
+            if fila.handle in ed.excluir:
+                fila.exclusion = "baja"
         por_edicion[ed.nombre] = (postulantes, seleccionados)
 
         for fila in postulantes + seleccionados:

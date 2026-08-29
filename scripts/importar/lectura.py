@@ -27,7 +27,9 @@ CORTE_DESCARTE = re.compile(r"^\s*(sacad[ao]s|descartad[ao]s)\b", re.I)
 CORTE_BAJA = re.compile(
     r"^\s*(no vienen|no vinieron|se bajaron|se bajo|de antes|las seleccionamos)", re.I
 )
-URL_INSTAGRAM = re.compile(r"instagram\.com/+([^/?\s]+)", re.I)
+# El dominio se escribe con erratas en las planillas ("instagram.cim"), así que
+# se acepta cualquier terminación: lo que importa es lo que viene después de la barra.
+URL_INSTAGRAM = re.compile(r"instagram\.[^/\s]+/+([^/?\s]+)", re.I)
 SOLO_DIGITOS = re.compile(r"^[\d\s+()-]{7,}$")
 MONTO = re.compile(r"^\$?\s*([\d.]+(?:,\d+)?)\s*$")
 
