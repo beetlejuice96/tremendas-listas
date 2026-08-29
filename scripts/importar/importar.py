@@ -208,6 +208,9 @@ def main() -> int:
     }
     print(f"  {len(ids_empr)} en la base")
 
+    # La cuenta a la que entró cada pago viene del color de la celda.
+    ids_cuenta = {o["nombre"]: o["id"] for o in sb.table("owners").select("id,nombre").execute().data}
+
     for ed in EDICIONES:
         postulantes, seleccionados = por_edicion[ed.nombre]
 
@@ -322,9 +325,10 @@ def main() -> int:
                   .eq("edicion_id", edicion_id).execute().data
             }
             pagos = [
-                {"participacion_id": ids_part[ids_empr[f.handle]], "monto": monto}
+                {"participacion_id": ids_part[ids_empr[f.handle]], "monto": monto,
+                 "cuenta_id": ids_cuenta.get(cuenta)}
                 for f in seleccionados if not f.excluida
-                for monto in f.montos
+                for monto, cuenta in f.pagos
                 if ids_part.get(ids_empr[f.handle])
             ]
             if pagos:

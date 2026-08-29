@@ -33,6 +33,15 @@ URL_INSTAGRAM = re.compile(r"instagram\.[^/\s]+/+([^/?\s]+)", re.I)
 SOLO_DIGITOS = re.compile(r"^[\d\s+()-]{7,}$")
 MONTO = re.compile(r"^\$?\s*([\d.]+(?:,\d+)?)\s*$")
 
+# A qué cuenta entró cada pago se anota pintando la celda. El naranja cambió de
+# tono en marzo 2026 y la leyenda de las planillas quedó con el viejo, así que se
+# aceptan los dos.
+CUENTA_POR_COLOR = {
+    "FFFF00FF": "ceci",   # magenta
+    "FFFF6D01": "cata",   # naranja oscuro, hasta diciembre 2025
+    "FFFF9900": "cata",   # naranja claro, desde marzo 2026
+}
+
 OTRAS_REDES = ("facebook", "linktr", "behance", "tiktok", "twitter")
 SUFIJOS_WEB = (".com", ".ar", ".com.ar", ".net", ".org", ".store", ".shop")
 
@@ -47,6 +56,27 @@ def leer_filas(path: Path) -> list[list[str]]:
         ["" if celda is None else str(celda).strip() for celda in fila]
         for fila in hoja.iter_rows(values_only=True)
     ]
+
+
+def leer_colores(path: Path) -> list[list[str | None]]:
+    """Color de relleno de cada celda, en la misma forma que `leer_filas`.
+
+    Sólo aplica a xlsx: los CSV no tienen formato. Devuelve una grilla vacía
+    cuando el archivo no puede aportar colores.
+    """
+    if path.suffix.lower() != ".xlsx":
+        return []
+    hoja = openpyxl.load_workbook(path, data_only=False).worksheets[0]
+    grilla = []
+    for fila in hoja.iter_rows():
+        colores = []
+        for celda in fila:
+            relleno = celda.fill
+            origen = relleno.start_color if relleno and relleno.fill_type else None
+            rgb = origen.rgb if origen is not None and origen.type == "rgb" else None
+            colores.append(rgb if rgb and rgb != "00000000" else None)
+        grilla.append(colores)
+    return grilla
 
 
 def normalizar_handle(valor: str) -> str | None:
@@ -270,7 +300,8 @@ class Fila:
     productos: str = ""
     fotos: str = ""
     mensaje: str = ""
-    montos: list[float] = field(default_factory=list)
+    # (monto, cuenta): la cuenta sale del color de la celda y puede ser None.
+    pagos: list[tuple[float, str | None]] = field(default_factory=list)
     # None = participó. 'baja' = quedó pero se cayó. 'descarte' = nunca quedó.
     exclusion: str | None = None
     sin_instagram: bool = False  # identificada por mail: necesita revisión humana
@@ -279,10 +310,15 @@ class Fila:
     def excluida(self) -> bool:
         return self.exclusion is not None
 
+    @property
+    def montos(self) -> list[float]:
+        return [monto for monto, _ in self.pagos]
+
 
 def parsear(path: Path) -> tuple[list[Fila], Columnas]:
     """Lee un archivo y devuelve sus filas de datos interpretadas."""
     filas = leer_filas(path)
+    colores = leer_colores(path)
     idx_header, header = encontrar_header(filas)
     datos = filas[idx_header + 1:] if idx_header >= 0 else filas
     cols = detectar_columnas(datos, header)
@@ -293,9 +329,16 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
     def valor(fila: list[str], j: int | None) -> str:
         return fila[j].strip() if j is not None and j < len(fila) else ""
 
+    def cuenta_de(nro_fila: int, col: int) -> str | None:
+        """Qué cuenta indica el color con que está pintada esa celda."""
+        if nro_fila >= len(colores) or col >= len(colores[nro_fila]):
+            return None
+        return CUENTA_POR_COLOR.get(colores[nro_fila][col])
+
     resultado: list[Fila] = []
     exclusion: str | None = None
-    for fila in datos:
+    for desplazamiento, fila in enumerate(datos):
+        nro_fila = idx_header + 1 + desplazamiento if idx_header >= 0 else desplazamiento
         # Un rótulo de sección viene solo en su fila y sin mail; así no se confunde
         # con una nota escrita al lado de los datos de un feriante.
         llenas = [c for c in fila if c.strip()]
@@ -322,7 +365,11 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
             if "@" not in email:
                 continue
             handle = f"mail:{email.lower()}"
-        montos = [m for j in cols.montos if (m := parsear_monto(valor(fila, j))) is not None]
+        pagos = [
+            (m, cuenta_de(nro_fila, j))
+            for j in cols.montos
+            if (m := parsear_monto(valor(fila, j))) is not None
+        ]
         resultado.append(Fila(
             handle=handle,
             sin_instagram=sin_instagram,
@@ -339,7 +386,7 @@ def parsear(path: Path) -> tuple[list[Fila], Columnas]:
             productos=valor(fila, cols.productos),
             fotos=valor(fila, cols.fotos),
             mensaje=valor(fila, cols.mensaje),
-            montos=montos,
+            pagos=pagos,
             exclusion=exclusion,
         ))
     return resultado, cols

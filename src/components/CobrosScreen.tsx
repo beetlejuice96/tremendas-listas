@@ -24,6 +24,7 @@ export default function CobrosScreen({ edicion, onVerPerfil, onEdicionActualizad
   const [filas, setFilas] = useState<FilaGestion[] | null>(null)
   const [owners, setOwners] = useState<Owner[]>([])
   const [tipos, setTipos] = useState<TipoPuesto[]>([])
+  const [porCuenta, setPorCuenta] = useState<Map<string, number>>(new Map())
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [busqueda, setBusqueda] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
@@ -55,6 +56,7 @@ export default function CobrosScreen({ edicion, onVerPerfil, onEdicionActualizad
   useEffect(() => {
     cargar()
     supabase.from('owners').select('id, nombre').then(({ data }) => setOwners(data ?? []))
+    cargarPorCuenta()
     supabase
       .from('tipos_puesto')
       .select('id, nombre, precio, orden')
@@ -63,6 +65,21 @@ export default function CobrosScreen({ edicion, onVerPerfil, onEdicionActualizad
       .then(({ data }) => setTipos(data ?? []))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edicion.id])
+
+  async function cargarPorCuenta() {
+    // Cuánto entró a cada cuenta: sale del color con que se pinta la celda en la
+    // planilla, así que en las primeras ediciones hay pagos sin cuenta asignada.
+    const { data } = await supabase
+      .from('pagos')
+      .select('monto, cuenta_id, participaciones!inner(edicion_id)')
+      .eq('participaciones.edicion_id', edicion.id)
+    const acumulado = new Map<string, number>()
+    for (const p of data ?? []) {
+      const clave = p.cuenta_id ?? 'sin_cuenta'
+      acumulado.set(clave, (acumulado.get(clave) ?? 0) + Number(p.monto))
+    }
+    setPorCuenta(acumulado)
+  }
 
   const total = useMemo(() => {
     const activos = (filas ?? []).filter((f) => f.estado === 'confirmada')
@@ -115,6 +132,23 @@ export default function CobrosScreen({ edicion, onVerPerfil, onEdicionActualizad
           <span className="text-amber-400">{total.parcial} parcial</span>
           <span className="text-green-400">{total.alDia} al día</span>
         </div>
+
+        {porCuenta.size > 0 && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-700 pt-2 text-xs">
+            {owners.map((o) => (
+              <span key={o.id} className="capitalize text-zinc-300">
+                {o.nombre}{' '}
+                <strong className="tabular-nums">{pesos(porCuenta.get(o.id) ?? 0)}</strong>
+              </span>
+            ))}
+            {porCuenta.has('sin_cuenta') && (
+              <span className="text-zinc-500">
+                sin cuenta{' '}
+                <strong className="tabular-nums">{pesos(porCuenta.get('sin_cuenta')!)}</strong>
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="mt-3 flex gap-2 border-t border-zinc-700 pt-3 text-xs">
           <LimiteFecha
