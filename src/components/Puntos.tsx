@@ -53,10 +53,15 @@ export default function Puntos({ emprendimientoId }: Props) {
       <div className="mb-2 flex items-baseline justify-between px-1">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Puntos</h2>
         {puntos && puntos.length > 0 && (
-          <span className="text-xs text-zinc-500">
-            <span className="font-semibold text-green-700">+{positivos}</span>
-            {' · '}
-            <span className="font-semibold text-red-700">−{negativos}</span>
+          <span className="flex items-center gap-2.5 text-xs">
+            <span className="flex items-center gap-1 font-semibold text-green-700">
+              <Carita signo="positivo" className="h-4 w-4" />
+              {positivos}
+            </span>
+            <span className="flex items-center gap-1 font-semibold text-red-700">
+              <Carita signo="negativo" className="h-4 w-4" />
+              {negativos}
+            </span>
           </span>
         )}
       </div>
@@ -64,15 +69,19 @@ export default function Puntos({ emprendimientoId }: Props) {
       <div className="mb-2 flex gap-2">
         <button
           onClick={() => setCargando('positivo')}
-          className="flex-1 rounded-xl bg-green-50 py-2.5 text-sm font-semibold text-green-700 ring-1 ring-green-200 active:bg-green-100"
+          aria-label="Sumar algo bueno"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-50 py-3 font-semibold text-green-700 ring-1 ring-green-200 active:bg-green-100"
         >
-          + Punto positivo
+          <Carita signo="positivo" className="h-7 w-7" />
+          <span className="text-sm">Algo bueno</span>
         </button>
         <button
           onClick={() => setCargando('negativo')}
-          className="flex-1 rounded-xl bg-red-50 py-2.5 text-sm font-semibold text-red-700 ring-1 ring-red-200 active:bg-red-100"
+          aria-label="Sumar algo que estuvo mal"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-50 py-3 font-semibold text-red-700 ring-1 ring-red-200 active:bg-red-100"
         >
-          − Punto negativo
+          <Carita signo="negativo" className="h-7 w-7" />
+          <span className="text-sm">Algo malo</span>
         </button>
       </div>
 
@@ -87,6 +96,12 @@ export default function Puntos({ emprendimientoId }: Props) {
             }`}
           >
             <div className="flex items-start justify-between gap-2">
+              <Carita
+                signo={p.signo}
+                className={`mt-0.5 h-5 w-5 shrink-0 ${
+                  p.signo === 'positivo' ? 'text-green-600' : 'text-red-600'
+                }`}
+              />
               <p
                 className={`min-w-0 flex-1 whitespace-pre-line text-sm ${
                   p.signo === 'positivo' ? 'text-green-900' : 'text-red-900'
@@ -143,6 +158,29 @@ export default function Puntos({ emprendimientoId }: Props) {
   )
 }
 
+
+/** Carita dibujada en vez de emoji: los emoji cambian de estilo según el
+ *  teléfono, y así toma el color exacto del contexto donde se use. */
+function Carita({ signo, className = '' }: { signo: 'positivo' | 'negativo'; className?: string }) {
+  const feliz = signo === 'positivo'
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9.5" />
+      <circle cx="8.6" cy="9.8" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="15.4" cy="9.8" r="1.15" fill="currentColor" stroke="none" />
+      <path d={feliz ? 'M7.8 14.6c1.2 1.5 2.6 2.2 4.2 2.2s3-.7 4.2-2.2' : 'M16.2 17c-1.2-1.5-2.6-2.2-4.2-2.2s-3 .7-4.2 2.2'} />
+    </svg>
+  )
+}
+
 function Formulario({
   emprendimientoId,
   ediciones,
@@ -196,11 +234,12 @@ function Formulario({
         onClick={(e) => e.stopPropagation()}
       >
         <h3
-          className={`mb-3 text-base font-semibold ${
+          className={`mb-3 flex items-center gap-2 text-base font-semibold ${
             positivo ? 'text-green-700' : 'text-red-700'
           }`}
         >
-          {punto ? 'Editar punto' : positivo ? 'Nuevo punto positivo' : 'Nuevo punto negativo'}
+          <Carita signo={signo} className="h-6 w-6" />
+          {punto ? 'Editar' : positivo ? 'Algo bueno' : 'Algo malo'}
         </h3>
 
         <textarea
