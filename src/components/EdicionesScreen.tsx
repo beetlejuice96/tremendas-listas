@@ -7,9 +7,15 @@ interface Props {
   ediciones: Edicion[]
   onSelect: (edicion: Edicion) => void
   onVerDirectorio: () => void
+  onVerBarra: () => void
 }
 
-export default function EdicionesScreen({ ediciones, onSelect, onVerDirectorio }: Props) {
+export default function EdicionesScreen({
+  ediciones,
+  onSelect,
+  onVerDirectorio,
+  onVerBarra,
+}: Props) {
   const [creando, setCreando] = useState(false)
   const [nombre, setNombre] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
@@ -152,6 +158,18 @@ export default function EdicionesScreen({ ediciones, onSelect, onVerDirectorio }
           </div>
         ) : (
           <div className="space-y-2">
+            <button
+              onClick={onVerBarra}
+              className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-4 text-left shadow-sm active:bg-zinc-50"
+            >
+              <span>
+                <span className="block font-semibold text-zinc-900">Barra</span>
+                <span className="block text-xs text-zinc-500">
+                  Registrar tragos vendidos y ver lo recaudado
+                </span>
+              </span>
+              <span className="text-zinc-400">›</span>
+            </button>
             <button
               onClick={onVerDirectorio}
               className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-4 text-left shadow-sm active:bg-zinc-50"

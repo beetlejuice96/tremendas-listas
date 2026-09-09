@@ -5,6 +5,7 @@ import type { Edicion } from './types'
 import EdicionesScreen from './components/EdicionesScreen'
 import CheckinScreen from './components/CheckinScreen'
 import DirectorioScreen from './components/DirectorioScreen'
+import BarraScreen from './components/BarraScreen'
 import PerfilScreen from './components/PerfilScreen'
 import CuraduriaScreen from './components/CuraduriaScreen'
 import CruceScreen from './components/CruceScreen'
@@ -23,6 +24,7 @@ export default function App() {
   const [ediciones, setEdiciones] = useState<Edicion[] | null>(null)
   const [edicionActiva, setEdicionActiva] = useState<Edicion | null>(null)
   const [verDirectorio, setVerDirectorio] = useState(false)
+  const [verBarra, setVerBarra] = useState(false)
   const [curando, setCurando] = useState<'votar' | 'cruce' | null>(null)
   // El perfil se abre encima de lo que estés mirando y vuelve ahí al cerrarse.
   const [perfilId, setPerfilId] = useState<string | null>(null)
@@ -77,6 +79,9 @@ export default function App() {
   if (perfilId) {
     return <PerfilScreen emprendimientoId={perfilId} onBack={() => setPerfilId(null)} />
   }
+  if (verBarra) {
+    return <BarraScreen onBack={() => setVerBarra(false)} />
+  }
   if (verDirectorio) {
     return <DirectorioScreen onVerPerfil={setPerfilId} onBack={() => setVerDirectorio(false)} />
   }
@@ -101,6 +106,7 @@ export default function App() {
         ediciones={ediciones}
         onSelect={seleccionarEdicion}
         onVerDirectorio={() => setVerDirectorio(true)}
+        onVerBarra={() => setVerBarra(true)}
       />
     )
   }

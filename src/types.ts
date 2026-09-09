@@ -188,3 +188,28 @@ export interface Punto {
   created_at: string
   ediciones?: { nombre: string } | null
 }
+
+export interface ProductoBarra {
+  id: string
+  categoria: string
+  nombre: string
+  descripcion: string | null
+  precio_publico: number
+  precio_feriante: number
+  costo: number | null
+  activo: boolean
+  orden: number
+}
+
+export interface VentaBarra {
+  id: string
+  edicion_id: string
+  producto_id: string
+  cantidad: number
+  precio_unitario: number
+  tipo_precio: 'publico' | 'feriante'
+  anulada: boolean
+  ticket: string
+  created_at: string
+  productos_barra?: { nombre: string; categoria: string; costo: number | null } | null
+}
