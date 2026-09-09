@@ -195,7 +195,8 @@ export interface ProductoBarra {
   nombre: string
   descripcion: string | null
   precio_publico: number
-  precio_feriante: number
+  /** null cuando el producto sólo se vende a precio público. */
+  precio_feriante: number | null
   costo: number | null
   activo: boolean
   orden: number

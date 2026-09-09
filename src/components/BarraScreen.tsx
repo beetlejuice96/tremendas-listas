@@ -43,20 +43,36 @@ export default function BarraScreen({ onBack }: Props) {
       })
   }, [])
 
-  const precio = (p: ProductoBarra) =>
-    Number(tipo === 'publico' ? p.precio_publico : p.precio_feriante)
+  // null = ese producto no se vende en la modalidad elegida.
+  const precio = (p: ProductoBarra): number | null => {
+    if (tipo === 'publico') return Number(p.precio_publico)
+    return p.precio_feriante == null ? null : Number(p.precio_feriante)
+  }
 
   const total = useMemo(
     () =>
       [...ticket.entries()].reduce((suma, [id, cant]) => {
         const p = productos.find((x) => x.id === id)
-        return suma + (p ? precio(p) * cant : 0)
+        return suma + (p ? (precio(p) ?? 0) * cant : 0)
       }, 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ticket, productos, tipo],
   )
 
   const unidades = [...ticket.values()].reduce((a, b) => a + b, 0)
+
+  // Cambiar a precio de feriante saca del ticket lo que sólo se vende al público,
+  // para no cobrar algo a un precio que no existe.
+  useEffect(() => {
+    if (tipo !== 'feriante') return
+    setTicket((prev) => {
+      const next = new Map(prev)
+      for (const id of prev.keys()) {
+        if (productos.find((p) => p.id === id)?.precio_feriante == null) next.delete(id)
+      }
+      return next.size === prev.size ? prev : next
+    })
+  }, [tipo, productos])
 
   function sumar(id: string, delta: number) {
     setTicket((prev) => {
@@ -77,7 +93,7 @@ export default function BarraScreen({ onBack }: Props) {
       edicion_id: edicionId,
       producto_id,
       cantidad,
-      precio_unitario: precio(productos.find((p) => p.id === producto_id)!),
+      precio_unitario: precio(productos.find((p) => p.id === producto_id)!)!,
       tipo_precio: tipo,
       ticket: ticketId,
     }))
@@ -171,21 +187,30 @@ export default function BarraScreen({ onBack }: Props) {
                       .filter((p) => p.categoria === cat)
                       .map((p) => {
                         const cant = ticket.get(p.id) ?? 0
+                        const valor = precio(p)
+                        const disponible = valor != null
                         return (
                           <div
                             key={p.id}
-                            className={`flex items-center gap-2 rounded-xl bg-white p-2.5 shadow-sm ${
-                              cant > 0 ? 'ring-2 ring-zinc-900' : ''
-                            }`}
+                            className={`flex items-center gap-2 rounded-xl p-2.5 shadow-sm ${
+                              !disponible ? 'bg-zinc-100' : 'bg-white'
+                            } ${cant > 0 ? 'ring-2 ring-zinc-900' : ''}`}
                           >
                             <button
-                              onClick={() => sumar(p.id, 1)}
-                              className="min-w-0 flex-1 text-left active:opacity-60"
+                              onClick={() => disponible && sumar(p.id, 1)}
+                              disabled={!disponible}
+                              className="min-w-0 flex-1 text-left active:opacity-60 disabled:active:opacity-100"
                             >
-                              <div className="font-semibold leading-tight text-zinc-900">
+                              <div
+                                className={`font-semibold leading-tight ${
+                                  disponible ? 'text-zinc-900' : 'text-zinc-400'
+                                }`}
+                              >
                                 {p.nombre}
                               </div>
-                              <div className="text-xs text-zinc-500">{pesos(precio(p))}</div>
+                              <div className="text-xs text-zinc-500">
+                                {disponible ? pesos(valor) : 'Sólo a precio público'}
+                              </div>
                             </button>
                             {cant > 0 && (
                               <div className="flex shrink-0 items-center gap-1">
@@ -200,12 +225,14 @@ export default function BarraScreen({ onBack }: Props) {
                                 </span>
                               </div>
                             )}
-                            <button
-                              onClick={() => sumar(p.id, 1)}
-                              className="h-9 w-9 shrink-0 rounded-lg bg-zinc-900 text-lg font-bold text-white active:bg-zinc-700"
-                            >
-                              +
-                            </button>
+                            {disponible && (
+                              <button
+                                onClick={() => sumar(p.id, 1)}
+                                className="h-9 w-9 shrink-0 rounded-lg bg-zinc-900 text-lg font-bold text-white active:bg-zinc-700"
+                              >
+                                +
+                              </button>
+                            )}
                           </div>
                         )
                       })}
