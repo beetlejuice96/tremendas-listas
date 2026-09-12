@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatHora, pesos, soloDigitos } from '../lib/text'
 import Puntos from './Puntos'
+import { useRol } from '../lib/rol'
 import type { HitoEdicion, ResumenEmprendimiento } from '../types'
 
 interface Props {
@@ -29,6 +30,8 @@ const INDUMENTARIA: Record<string, string> = {
 }
 
 export default function PerfilScreen({ emprendimientoId, onBack }: Props) {
+  const { rol } = useRol()
+  const esOwner = rol === 'owner'
   const [resumen, setResumen] = useState<ResumenEmprendimiento | null>(null)
   const [detalle, setDetalle] = useState<Detalle | null>(null)
   const [hitos, setHitos] = useState<HitoEdicion[] | null>(null)
@@ -177,7 +180,7 @@ export default function PerfilScreen({ emprendimientoId, onBack }: Props) {
           </h2>
           <div className="space-y-2">
             {hitos?.map((h) => (
-              <Hito key={h.edicion_id} hito={h} />
+              <Hito key={h.edicion_id} hito={h} verMontos={esOwner} />
             ))}
             {hitos?.length === 0 && (
               <p className="py-4 text-center text-sm text-zinc-500">Sin historial todavía</p>
@@ -210,7 +213,7 @@ function Contador({
   )
 }
 
-function Hito({ hito: h }: { hito: HitoEdicion }) {
+function Hito({ hito: h, verMontos }: { hito: HitoEdicion; verMontos: boolean }) {
   const participo = h.participacion_id !== null
   const seCayo = participo && h.estado !== 'confirmada'
 
@@ -252,7 +255,7 @@ function Hito({ hito: h }: { hito: HitoEdicion }) {
               llegó {formatHora(h.llegado_at)}
             </span>
           )}
-          {h.no_paga ? (
+          {!verMontos ? null : h.no_paga ? (
             <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600">no paga</span>
           ) : h.precio_final != null ? (
             <span

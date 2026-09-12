@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { parseFeriantesFile } from '../lib/parseExcel'
+import { useRol } from '../lib/rol'
 import type { Edicion } from '../types'
 
 interface Props {
@@ -16,6 +17,8 @@ export default function EdicionesScreen({
   onVerDirectorio,
   onVerBarra,
 }: Props) {
+  const { rol } = useRol()
+  const esOwner = rol === 'owner'
   const [creando, setCreando] = useState(false)
   const [nombre, setNombre] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
@@ -158,6 +161,7 @@ export default function EdicionesScreen({
           </div>
         ) : (
           <div className="space-y-2">
+            {esOwner && (
             <button
               onClick={onVerBarra}
               className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-4 text-left shadow-sm active:bg-zinc-50"
@@ -170,6 +174,7 @@ export default function EdicionesScreen({
               </span>
               <span className="text-zinc-400">›</span>
             </button>
+            )}
             <button
               onClick={onVerDirectorio}
               className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-4 text-left shadow-sm active:bg-zinc-50"

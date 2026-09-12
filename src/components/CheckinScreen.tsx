@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { normalizeText, formatHora } from '../lib/text'
 import MapaView from './MapaView'
 import { CURADURIA_HABILITADA } from '../config'
+import { useRol } from '../lib/rol'
 import CobrosScreen from './CobrosScreen'
 import { aFeriante } from '../types'
 import type { Edicion, Feriante, ParticipacionConEmprendimiento } from '../types'
@@ -35,7 +36,14 @@ export default function CheckinScreen({
   const [sectoresActivos, setSectoresActivos] = useState<Set<string>>(new Set())
   // Antes de la feria lo que se usa es el seguimiento de cobros; el día de la
   // feria, el check-in. Por eso arranca en cobros salvo que ya haya llegadas.
+  const { rol, listo: rolListo } = useRol()
+  const esOwner = rol === 'owner'
   const [vista, setVista] = useState<'cobros' | 'lista' | 'mapa'>('cobros')
+
+  // Sin acceso a cobros, la vista por defecto no aplica: se cae a la lista.
+  useEffect(() => {
+    if (rolListo && !esOwner && vista === 'cobros') setVista('lista')
+  }, [rolListo, esOwner, vista])
 
   function toggleSector(sector: string) {
     setSectoresActivos((prev) => {
@@ -151,7 +159,7 @@ export default function CheckinScreen({
 
         <div className="mb-3 flex rounded-full bg-zinc-800 p-1">
           {/* Curaduría abre pantalla completa: necesita todo el alto para la ficha. */}
-          {CURADURIA_HABILITADA && (
+          {CURADURIA_HABILITADA && esOwner && (
             <button
               onClick={onCurar}
               className="flex-1 rounded-full py-1.5 text-sm font-medium text-zinc-400"
@@ -161,7 +169,7 @@ export default function CheckinScreen({
           )}
           {(
             [
-              ['cobros', 'Cobros'],
+              ...(esOwner ? ([['cobros', 'Cobros']] as const) : []),
               ['lista', 'Lista'],
               ['mapa', 'Mapa'],
             ] as const
@@ -234,7 +242,7 @@ export default function CheckinScreen({
         )}
       </header>
 
-      {vista === 'cobros' && (
+      {vista === 'cobros' && esOwner && (
         <CobrosScreen
           edicion={edicion}
           onVerPerfil={onVerPerfil}
