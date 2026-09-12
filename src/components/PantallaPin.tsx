@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// Usuario compartido del equipo. Para quien usa la app esto es "poné el PIN";
-// por detrás es Supabase Auth, así que la protección es real y no sólo de pantalla.
-const EMAIL_EQUIPO = import.meta.env.VITE_EMAIL_EQUIPO as string
+const EMAIL_KEY = 'tremendas-email'
+
+// Sugerencia para la primera vez; después manda el último mail usado en ese
+// dispositivo. Cada cuenta ve una parte distinta de la app según su rol.
+const EMAIL_SUGERIDO = (import.meta.env.VITE_EMAIL_EQUIPO as string) ?? ''
 
 export default function PantallaPin() {
+  const [email, setEmail] = useState(localStorage.getItem(EMAIL_KEY) ?? EMAIL_SUGERIDO)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [entrando, setEntrando] = useState(false)
@@ -15,12 +18,16 @@ export default function PantallaPin() {
     setEntrando(true)
     setError(null)
     const { error } = await supabase.auth.signInWithPassword({
-      email: EMAIL_EQUIPO,
+      email: email.trim(),
       password: pin,
     })
     if (error) {
-      setError(error.message.includes('Invalid') ? 'PIN incorrecto' : error.message)
+      // Mensaje único a propósito: distinguir "no existe" de "PIN incorrecto"
+      // le diría a cualquiera qué cuentas existen.
+      setError('Email o PIN incorrecto')
       setPin('')
+    } else {
+      localStorage.setItem(EMAIL_KEY, email.trim())
     }
     setEntrando(false)
   }
@@ -29,23 +36,32 @@ export default function PantallaPin() {
     <div className="flex min-h-dvh flex-col justify-center bg-zinc-900 px-6">
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-3xl font-bold text-white">Tremendas Listas</h1>
-        <p className="mt-1 text-sm text-zinc-400">Ingresá el PIN del equipo</p>
+        <p className="mt-1 text-sm text-zinc-400">Entrá con tu cuenta</p>
 
         <form onSubmit={entrar} className="mt-8 space-y-3">
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            className="w-full rounded-xl bg-zinc-800 px-4 py-3.5 text-base text-white placeholder-zinc-500 outline-none focus:bg-zinc-700"
+          />
           <input
             type="password"
             inputMode="numeric"
             autoComplete="current-password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            placeholder="••••••"
-            autoFocus
-            className="w-full rounded-xl bg-zinc-800 px-4 py-4 text-center text-2xl tracking-[0.4em] text-white placeholder-zinc-600 outline-none focus:bg-zinc-700"
+            placeholder="PIN"
+            className="w-full rounded-xl bg-zinc-800 px-4 py-3.5 text-center text-2xl tracking-[0.4em] text-white placeholder-zinc-600 outline-none focus:bg-zinc-700"
           />
           {error && <p className="text-center text-sm text-red-400">{error}</p>}
           <button
             type="submit"
-            disabled={entrando || pin.length < 4}
+            disabled={entrando || !email.trim() || pin.length < 4}
             className="w-full rounded-xl bg-white py-4 text-base font-semibold text-zinc-900 active:bg-zinc-200 disabled:opacity-40"
           >
             {entrando ? 'Entrando…' : 'Entrar'}

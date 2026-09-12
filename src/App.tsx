@@ -14,13 +14,13 @@ import PantallaPin from './components/PantallaPin'
 
 const STORAGE_KEY = 'tremendas-edicion-activa'
 
-// El PIN se exige sólo si hay un usuario de equipo configurado. Así la app sigue
-// andando mientras la cuenta compartida no esté creada en Supabase.
-const PIN_ACTIVO = Boolean(import.meta.env.VITE_EMAIL_EQUIPO)
+// El ingreso se exige salvo que se apague a propósito, que es lo que permite
+// trabajar en local sin autenticar. En producción la variable está puesta.
+const LOGIN_ACTIVO = import.meta.env.VITE_SIN_LOGIN !== '1'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
-  const [sesionLista, setSesionLista] = useState(!PIN_ACTIVO)
+  const [sesionLista, setSesionLista] = useState(!LOGIN_ACTIVO)
   const [ediciones, setEdiciones] = useState<Edicion[] | null>(null)
   const [edicionActiva, setEdicionActiva] = useState<Edicion | null>(null)
   const [verDirectorio, setVerDirectorio] = useState(false)
@@ -30,7 +30,7 @@ export default function App() {
   const [perfilId, setPerfilId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!PIN_ACTIVO) return
+    if (!LOGIN_ACTIVO) return
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setSesionLista(true)
@@ -39,7 +39,7 @@ export default function App() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  const autenticado = !PIN_ACTIVO || session !== null
+  const autenticado = !LOGIN_ACTIVO || session !== null
 
   useEffect(() => {
     if (!autenticado) return
