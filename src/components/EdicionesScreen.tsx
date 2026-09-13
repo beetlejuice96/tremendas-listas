@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useRol } from '../lib/rol'
 import { parseFeriantesFile } from '../lib/parseExcel'
 import type { Edicion } from '../types'
 
@@ -16,6 +17,15 @@ export default function EdicionesScreen({
   onVerDirectorio,
   onVerBarra,
 }: Props) {
+  const { email } = useRol()
+
+  async function cerrarSesion() {
+    if (!confirm('¿Cerrar sesión en este dispositivo?')) return
+    await supabase.auth.signOut()
+    // signOut limpia el token guardado; recargar devuelve a la pantalla de ingreso.
+    location.reload()
+  }
+
   const [creando, setCreando] = useState(false)
   const [nombre, setNombre] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
@@ -111,8 +121,21 @@ export default function EdicionesScreen({
   return (
     <div className="min-h-dvh bg-zinc-100">
       <header className="bg-zinc-900 px-4 pb-4 pt-6 text-white">
-        <h1 className="text-2xl font-bold">Tremendas Listas</h1>
-        <p className="text-sm text-zinc-400">Check-in de feriantes</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">Tremendas Listas</h1>
+            <p className="text-sm text-zinc-400">Check-in de feriantes</p>
+          </div>
+          {email && (
+            <button
+              onClick={cerrarSesion}
+              className="shrink-0 rounded-lg px-2 py-1 text-right text-xs text-zinc-400 active:bg-white/10"
+            >
+              <span className="block max-w-[9rem] truncate">{email}</span>
+              <span className="block underline">Cerrar sesión</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="mx-auto max-w-md space-y-4 p-4">

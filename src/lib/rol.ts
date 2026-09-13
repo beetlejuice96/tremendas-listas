@@ -9,8 +9,9 @@ export type Rol = 'owner' | 'equipo'
  *  base, así que una cuenta de equipo tampoco lo obtiene consultando directo.
  *  Mientras se resuelve arranca en 'equipo', que es lo más restrictivo: si
  *  arrancara en 'owner' se vería un parpadeo con datos que no corresponden. */
-export function useRol(): { rol: Rol; listo: boolean } {
+export function useRol(): { rol: Rol; listo: boolean; email: string | null } {
   const [rol, setRol] = useState<Rol>('equipo')
+  const [email, setEmail] = useState<string | null>(null)
   const [listo, setListo] = useState(false)
 
   useEffect(() => {
@@ -19,9 +20,13 @@ export function useRol(): { rol: Rol; listo: boolean } {
     async function cargar() {
       const { data: sesion } = await supabase.auth.getSession()
       if (!sesion.session) {
-        if (!cancelado) setListo(true)
+        if (!cancelado) {
+          setEmail(null)
+          setListo(true)
+        }
         return
       }
+      if (!cancelado) setEmail(sesion.session.user.email ?? null)
       const { data } = await supabase
         .from('perfiles')
         .select('rol')
@@ -40,5 +45,5 @@ export function useRol(): { rol: Rol; listo: boolean } {
     }
   }, [])
 
-  return { rol, listo }
+  return { rol, listo, email }
 }
